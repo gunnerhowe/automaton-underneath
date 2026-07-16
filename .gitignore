@@ -1,0 +1,6 @@
+__pycache__/
+*.aux
+*.log
+*.out
+preview_*.png
+runs_hybrid/

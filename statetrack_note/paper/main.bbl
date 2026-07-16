@@ -1,0 +1,112 @@
+\begin{thebibliography}{14}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Chung et~al.(2026)Chung, Choi, and Kim]{chung2026error}
+Jiwan Chung, Heechan Choi, and Seon~Joo Kim.
+\newblock Rethinking state tracking in recurrent models through error control
+  dynamics.
+\newblock \emph{arXiv preprint arXiv:2605.07755}, 2026.
+
+\bibitem[Del{\'e}tang et~al.(2023)Del{\'e}tang, Ruoss, Grau-Moya, Genewein,
+  Wenliang, Catt, Cundy, Hutter, Legg, Veness, and Ortega]{deletang2023chomsky}
+Gr{\'e}goire Del{\'e}tang, Anian Ruoss, Jordi Grau-Moya, Tim Genewein, Li~Kevin
+  Wenliang, Elliot Catt, Chris Cundy, Marcus Hutter, Shane Legg, Joel Veness,
+  and Pedro~A. Ortega.
+\newblock Neural networks and the {Chomsky} hierarchy.
+\newblock In \emph{International Conference on Learning Representations}, 2023.
+\newblock arXiv:2207.02098.
+
+\bibitem[Ebrahimi and Memisevic(2025)]{ebrahimi2025bilinear}
+M.~Reza Ebrahimi and Roland Memisevic.
+\newblock Revisiting bi-linear state transitions in recurrent neural networks.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2025.
+\newblock arXiv:2505.21749.
+
+\bibitem[Grazzi et~al.(2025)Grazzi, Siems, Zela, Franke, Hutter, and
+  Pontil]{grazzi2025negative}
+Riccardo Grazzi, Julien Siems, Arber Zela, J{\"o}rg~K.H. Franke, Frank Hutter,
+  and Massimiliano Pontil.
+\newblock Unlocking state-tracking in linear {RNNs} through negative
+  eigenvalues.
+\newblock In \emph{International Conference on Learning Representations}, 2025.
+\newblock arXiv:2411.12537.
+
+\bibitem[Lee(2026)]{lee2026falsifier}
+Jeonghoon Lee.
+\newblock A held-out transition-pair falsifier for long-horizon non-abelian
+  state tracking.
+\newblock \emph{arXiv preprint arXiv:2606.07254}, 2026.
+
+\bibitem[Merrill et~al.(2024)Merrill, Petty, and
+  Sabharwal]{merrill2024illusion}
+William Merrill, Jackson Petty, and Ashish Sabharwal.
+\newblock The illusion of state in state-space models.
+\newblock \emph{International Conference on Machine Learning}, 2024.
+\newblock arXiv:2404.08819.
+
+\bibitem[Mishra et~al.(2026)Mishra, Tan, Stoica, Gonzalez, and
+  Dao]{mishra2026m2rnn}
+Mayank Mishra, Shawn Tan, Ion Stoica, Joseph Gonzalez, and Tri Dao.
+\newblock {M$^2$RNN}: Non-linear {RNNs} with matrix-valued states for scalable
+  language modeling.
+\newblock \emph{arXiv preprint arXiv:2603.14360}, 2026.
+
+\bibitem[Ruiz and Gu(2025)]{buitrago2025length}
+Ricardo~Buitrago Ruiz and Albert Gu.
+\newblock Understanding and improving length generalization in recurrent
+  models.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2025.
+\newblock arXiv:2507.02782.
+
+\bibitem[Shakerinava et~al.(2026)Shakerinava, Khavari, Ravanbakhsh, and
+  Chandar]{shakerinava2026diagonal}
+Mehran Shakerinava, Behnoush Khavari, Siamak Ravanbakhsh, and Sarath Chandar.
+\newblock The expressive limits of diagonal {SSMs} for state-tracking.
+\newblock \emph{arXiv preprint arXiv:2603.01959}, 2026.
+
+\bibitem[Siems et~al.(2025)Siems, Carstensen, Zela, Hutter, Pontil, and
+  Grazzi]{siems2025deltaproduct}
+Julien Siems, Timur Carstensen, Arber Zela, Frank Hutter, Massimiliano Pontil,
+  and Riccardo Grazzi.
+\newblock {DeltaProduct}: Improving state-tracking in linear {RNNs} via
+  {Householder} products.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2025.
+\newblock arXiv:2502.10297.
+
+\bibitem[Siems et~al.(2026)Siems, Grazzi, P{\"o}ppel, Kalinin, Ballani, and
+  Rahmani]{siems2026codestate}
+Julien Siems, Riccardo Grazzi, Korbinian P{\"o}ppel, Kirill Kalinin, Hitesh
+  Ballani, and Babak Rahmani.
+\newblock Learning state-tracking from code using linear {RNNs}.
+\newblock \emph{arXiv preprint arXiv:2602.14814}, 2026.
+
+\bibitem[Sung(2026)]{sung2026holonomic}
+Ilmo Sung.
+\newblock Robust reasoning as a symmetry-protected topological phase.
+\newblock \emph{arXiv preprint arXiv:2601.05240}, 2026.
+
+\bibitem[Terzi{\'c} et~al.(2025{\natexlab{a}})Terzi{\'c}, Hersche,
+  Camposampiero, Hofmann, Sebastian, and Rahimi]{terzic2025sdssm}
+Aleksandar Terzi{\'c}, Michael Hersche, Giacomo Camposampiero, Thomas Hofmann,
+  Abu Sebastian, and Abbas Rahimi.
+\newblock On the expressiveness and length generalization of selective
+  state-space models on regular languages.
+\newblock In \emph{AAAI Conference on Artificial Intelligence},
+  2025{\natexlab{a}}.
+\newblock arXiv:2412.19350.
+
+\bibitem[Terzi{\'c} et~al.(2025{\natexlab{b}})Terzi{\'c}, Menet, Hersche,
+  Hofmann, and Rahimi]{terzic2025pdssm}
+Aleksandar Terzi{\'c}, Nicolas Menet, Michael Hersche, Thomas Hofmann, and
+  Abbas Rahimi.
+\newblock Structured sparse transition matrices to enable state tracking in
+  state-space models.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  2025{\natexlab{b}}.
+\newblock arXiv:2509.22284.
+
+\end{thebibliography}
