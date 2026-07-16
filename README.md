@@ -26,8 +26,11 @@ statetrack_note/
   runs/                        202 JSON artifacts, one per run (the paper's ground truth)
   analyze.py                   artifacts -> cell medians, pre-registered verdicts, numbers, figures
   verify_regen.py              byte-verification: every number in the paper regenerates from runs/
-  PREREG_HYBRID.md             pre-registration for the follow-up bridge experiment (in progress)
+  PREREG_HYBRID.md             pre-registration for the hybrid bridge experiment (verdicts recorded)
   runner_hybrid.py             its runner (signed-register load-then-track)
+  runs_hybrid/                 its 53 artifacts; analyze_hybrid.py prints the pre-registered verdicts
+                               (K1 boundary kill fired: content pressure tames the parasite to graded
+                               degradation; attractor + concealment persist from exact init)
   paper/                       main.tex/pdf, references.bib, numbers.tex (all macros), figures,
                                arXiv abstract + upload zip, Zenodo metadata
 ```
