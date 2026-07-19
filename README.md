@@ -15,6 +15,22 @@ verified-exact solution, Adam grows it and pulls the model off; in all 49 seeds 
 zeroing $W_b$ at inference keeps the fit — and at law-minimal width it *restores* exact length
 generalization. The exact automaton is learned underneath the parasite.
 
+**Follow-up paper (this repo, `twogap/`):**
+
+> **The Gate Learns Hygiene: The Training Economics of the Write Path in Linear-RNN Language
+> Models.** Gunner Levi Howe, July 2026. Manuscript at `twogap/paper/main.pdf`.
+
+**TL;DR.** A pre-registered 13-run grid (30M-param DeltaNet-class LMs, 300M tokens each) testing
+whether write discipline buys recall or state tracking during training. An $L_1$ **price** on the
+write gate makes it discover **write hygiene** unsupervised — mean gate 0.119 on state-operation
+tokens vs 0.473 on content, recovering the oracle pattern with no role labels (first token-role
+statistics of a learned write gate; dose-responsive in mixture; the unpriced gate is 2.8× more open
+on operations). Hygiene buys a small recall lift at matched perplexity (both seeds, honest error
+bars) but **does not buy automata**: the gating-helps-tracking prediction died sign-inverted, the
+only skill that emerged arose in the *always-write* arm, and damping its op-token writes **destroys**
+it — inverting the toy-regime reveal effect and completing a three-regime scope map
+(reveal / repair / destroy). A frozen emergence-forecasting gate correctly declined to fire (0/7).
+
 ## Layout
 
 ```
@@ -33,6 +49,20 @@ statetrack_note/
                                degradation; attractor + concealment persist from exact init)
   paper/                       main.tex/pdf, references.bib, numbers.tex (all macros), figures,
                                arXiv abstract + upload zip, Zenodo metadata
+twogap/
+  PREREG_TWOGAP.md             pre-registration for the write-economics grid (frozen before any run;
+                               amendments disclosed inline)
+  PREREG_FUSION.md             frozen emergence-forecasting protocol (composed anchor, blind cells,
+                               kill criteria; KF3 fired -- disclosed)
+  VERDICTS.md                  the scored verdicts for every pre-registered prediction + disclosures
+  model.py / core_deltanet.py  30M DeltaNet-class LM, chunk-parallel delta rule (equivalence-gated),
+                               write-gate arms A / B (L1-priced) / B' (unpriced) / C (oracle)
+  data.py / train.py           TinyStories + role-annotated synthetic tracking families; trainer
+  runs/                        per-run log.json + probes.jsonl (the paper's ground truth; 20 runs)
+  hygiene.json                 the token-role gate statistics artifact (P2 headline)
+  p4_results.json              the damping-intervention artifact (P4 inversion)
+  gen_numbers.py / gen_figures.py / verify_regen.py   paper pipeline (byte-verified)
+  paper/                       main.tex/pdf, references.bib, numbers.tex, figures
 ```
 
 ## Verify the paper's numbers

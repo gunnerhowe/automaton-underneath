@@ -1,0 +1,78 @@
+{
+ "A_m50_s0": {
+  "base": {
+   "boxes_16": 0.54,
+   "boxes_2": 0.42,
+   "boxes_32": 0.22,
+   "boxes_4": 0.28,
+   "boxes_8": 0.36,
+   "dial_16": 0.24,
+   "dial_2": 0.46,
+   "dial_32": 0.32,
+   "dial_4": 0.32,
+   "dial_8": 0.34,
+   "toggle_16": 0.54,
+   "toggle_2": 1.0,
+   "toggle_32": 0.44,
+   "toggle_4": 1.0,
+   "toggle_8": 1.0
+  },
+  "damped": {
+   "boxes_16": 0.4,
+   "boxes_2": 0.38,
+   "boxes_32": 0.22,
+   "boxes_4": 0.44,
+   "boxes_8": 0.3,
+   "dial_16": 0.24,
+   "dial_2": 0.46,
+   "dial_32": 0.32,
+   "dial_4": 0.32,
+   "dial_8": 0.34,
+   "toggle_16": 0.46,
+   "toggle_2": 0.52,
+   "toggle_32": 0.56,
+   "toggle_4": 0.54,
+   "toggle_8": 0.5
+  },
+  "deep_base": 0.525,
+  "deep_damped": 0.365
+ },
+ "A_m0_s0": {
+  "base": {
+   "boxes_16": 0.3,
+   "boxes_2": 0.48,
+   "boxes_32": 0.3,
+   "boxes_4": 0.48,
+   "boxes_8": 0.4,
+   "dial_16": 0.4,
+   "dial_2": 0.3,
+   "dial_32": 0.28,
+   "dial_4": 0.28,
+   "dial_8": 0.32,
+   "toggle_16": 0.54,
+   "toggle_2": 0.48,
+   "toggle_32": 0.44,
+   "toggle_4": 0.46,
+   "toggle_8": 0.5
+  },
+  "damped": {
+   "boxes_16": 0.3,
+   "boxes_2": 0.46,
+   "boxes_32": 0.3,
+   "boxes_4": 0.46,
+   "boxes_8": 0.34,
+   "dial_16": 0.4,
+   "dial_2": 0.3,
+   "dial_32": 0.28,
+   "dial_4": 0.28,
+   "dial_8": 0.32,
+   "toggle_16": 0.54,
+   "toggle_2": 0.48,
+   "toggle_32": 0.44,
+   "toggle_4": 0.46,
+   "toggle_8": 0.5
+  },
+  "deep_base": 0.355,
+  "deep_damped": 0.355
+ }
+}

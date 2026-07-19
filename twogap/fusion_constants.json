@@ -1,0 +1,11 @@
+{
+ "fixed": {
+  "tp": 0.45,
+  "tb": 0.65,
+  "fracs": [],
+  "leads": [],
+  "fa": 0,
+  "pre_event": 0,
+  "n_event": 0
+ }
+}

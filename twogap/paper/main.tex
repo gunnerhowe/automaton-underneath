@@ -1,0 +1,459 @@
+\documentclass[10pt]{article}
+\usepackage[margin=1.05in]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[numbers]{natbib}
+\input{numbers.tex}
+\newcommand{\gt}{g_t}
+
+\title{The Gate Learns Hygiene:\\ The Training Economics of the Write Path\\ in Linear-RNN Language Models}
+\author{Gunner Levi Howe\\\texttt{gunnerlevihowe@gmail.com}}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Linear-RNN language models write into a fixed-size state on every token, and their two best-known
+capability gaps --- associative recall and state tracking --- are both plausibly downstream of
+undisciplined writes. The frontier now ships learned write gates (Gated DeltaNet-2), but no one has
+reported what a learned write gate actually \emph{learns}, or whether write discipline causally buys
+either capability during training. We pre-registered and ran a $13$-run controlled grid at
+\tgParamsM{}M parameters ($\tgTrainTokensM$M tokens per run): gate arms
+$\{$always-write, $L_1$-priced learned gate, unpriced learned gate, oracle gate$\}$
+$\times$ tracking-data mixture $\{0,2,10,50\%\}$, on TinyStories plus synthetic state-tracking
+families with token-level role annotations held out from every learned arm. Three results.
+(1)~\emph{The price discovers hygiene}: with a small $L_1$ price on writing, the learned gate ends
+training at mean $\tgHygOpBmFifty$ on state-\emph{operation} tokens versus $\tgHygOtherBmFifty$ on
+content tokens --- recovering the oracle's write-suppression pattern with no access to role labels ---
+while the unpriced gate stays $\tgHygOpRatioBpOverB\times$ more open on operations; the gap is
+present at every mixture and grows with operation density. These are, to our knowledge, the first
+token-role statistics of a learned write gate. (2)~\emph{Hygiene buys recall, cheaply but weakly}:
+on pure language data the priced-gate arm beats always-write on multi-query recall by
+$+\tgMqarDeltaSZero$/$+\tgMqarDeltaSOne$ across two seeds at matched perplexity (worst-case cost
+$+\tgPplWorstCostPct\%$) --- directionally replicated, $2$--$3\times$ an identical-configuration
+noise floor we measure directly, but below our pre-registered $+0.03$ margin at one seed, and from a
+near-chance base. (3)~\emph{Hygiene does not buy automata}: the pre-registered
+gating-helps-tracking-under-scarcity prediction died with the sign inverted, the only tracking skill
+that emerged anywhere arose in the \emph{always-write} arm, and damping op-token writes at inference
+\emph{destroys} that skill ($1.00\to\tgPfourDampToggleEight$) rather than revealing anything beneath
+--- inverting the reveal effect our companion mechanism study established in cornered toy training,
+and completing a three-regime scope map: write damping reveals hidden automata in minimal-width pure
+training, repairs them in hybrid tasks, and deletes skills in LM training, where the write path is
+how skills form. All predictions, kills, and analysis rules were pre-registered in-repository before
+any grid run; deviations are disclosed, and every number in this paper regenerates from committed run
+artifacts.
+\end{abstract}
+
+\section{Introduction}
+A linear-RNN language model carries its entire context in a fixed-size matrix state, updated by a
+write on every token. Its two most-cited capability gaps relative to attention --- associative
+recall of stated facts \citep{arora2023zoology} and multi-step state tracking
+\citep{merrill2024illusion,grazzi2025negative} --- have a shared candidate root: \emph{undisciplined
+writing}. Every token overwrites state whether or not it carries information worth storing, so
+stored facts get polluted (the recall gap), and state-transformation structure gets buried
+(the tracking gap).
+
+The field has begun to act on this intuition at the architecture level. Gated DeltaNet-2
+\citep{hatamizadeh2026gdn2} decouples erase and write with channel-wise learned gates at 1.3B
+parameters and reports better recall and perplexity; sparse-write designs improve recall in
+expanded-state settings \citep{pan2025sse,xiao2026ramnet}; the lineage goes back through gated delta
+rules \citep{yang2025gateddeltanet,yang2024deltanet,gu2023mamba} to learned update-skipping in
+classical RNNs \citep{campos2018skiprnn}. But shipping a gate is not understanding one. To our
+knowledge, no published work reports \emph{what a learned write gate learns} --- its statistics
+against token roles --- nor whether write discipline \emph{causally} buys recall or tracking during
+training, nor what it costs. Those are economics questions, and they are design-rule-relevant
+precisely because the frontier is already paying for the machinery.
+
+This paper asks the economics questions at garage scale, with pre-registered discipline. We train
+\tgParamsM{}M-parameter DeltaNet-class language models from scratch under four write-gate arms ---
+\textbf{A} always-write ($\gt\equiv 1$, the field default), \textbf{B} learned gate with an $L_1$
+price on writing, \textbf{B$'$} learned gate unpriced (the Gated DeltaNet-2 species), and \textbf{C}
+oracle gate (writes suppressed on ground-truth state-operation tokens) --- crossed with a
+data-mixture axis $\{0,2,10,50\%\}$ of synthetic state-tracking text whose token roles
+(content / operation / check) are annotated in the corpus but visible only to arm C. The synthetic
+families sit at three algebraic tiers (memory-permutation $S_3$, involution $\mathbb{Z}_2$, cyclic
+$\mathbb{Z}_3$), with evaluation chains up to $4\times$ deeper than training. Every prediction and
+kill criterion was frozen in-repository before the first grid run.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+\item \textbf{The first token-role account of a learned write gate} (\S\ref{sec:hygiene}). Under an
+$L_1$ price, the gate discovers write hygiene unsupervised: mean gate $\tgHygOpBmFifty$ on operation
+tokens vs.\ $\tgHygOtherBmFifty$ on content at the 50\% mixture (gap $+\tgHygGapBmFifty$), with
+$\tgBGateOffPct\%$ of gates effectively shut. The unpriced control gates operations at
+$\tgHygOpBpmFifty$ --- $\tgHygOpRatioBpOverB\times$ more open --- and barely sparsifies
+($\tgBpGateOffPct\%$ shut). Exploratory: the hygiene gap is dose-responsive in mixture
+($+\tgHygGapBmTwo\to+\tgHygGapBmTen\to+\tgHygGapBmFifty$).
+\item \textbf{A measured recall effect with honest error bars} (\S\ref{sec:recall}). Priced hygiene
+lifts recall over always-write on pure LM data in both seeds run
+($+\tgMqarDeltaSZero$, $+\tgMqarDeltaSOne$; matched perplexity), $2$--$3\times$ the
+identical-configuration noise floor ($\tgNoiseFloorMqar$) that our own grid supplies, but below the
+pre-registered $+0.03$ margin at seed~1 and from a near-chance base --- reported as supported and
+fragile, not confirmed.
+\item \textbf{A clean pre-registered negative on the tracking side} (\S\ref{sec:tracking}--\S\ref{sec:damping}).
+Gating did not help tracking emerge anywhere on the grid; at 2\% scarcity the oracle arm was
+\emph{worse} than always-write (predicted $>+0.10$, observed $\tgCminusADeepmTwo$). The one skill
+that emerged --- perfect depth-$\le$8 toggle tracking, always-write arm, 50\% mixture --- lives
+\emph{on} the write path: damping op-token writes at inference deletes it
+($1.00\to\tgPfourDampToggleEight$ at depth 8) while doing exactly nothing
+($\tgPfourDeepDeltamZero$) where no skill exists. With our companion mechanism study
+\citep{howe2026automaton}, this completes a three-regime scope map for write-path intervention
+(reveal / repair / destroy) whose boundary variable is how cornered training is.
+\item \textbf{Method disclosures the field can reuse}: an identical-computation noise floor hiding
+inside any oracle-mask grid (\S\ref{sec:recall}); a constant-policy artifact that makes at-chance
+accuracy tuples repeat across independent runs (\S\ref{sec:tracking}); and a pre-registered,
+frozen-threshold emergence-forecasting protocol whose gate correctly declined to fire on this grid
+(\S\ref{sec:fusion}).
+\end{enumerate}
+
+Everything here is \tgParamsM{}M-parameter scale on TinyStories-class data: we are validating and
+killing \emph{design rules}, not making frontier claims. The rules that survive are candidates for
+the next scale up; the rule that died, died cheaply.
+
+\section{Related work}
+\textbf{Write gating in linear attention.} Gated DeltaNet \citep{yang2025gateddeltanet} added a
+scalar decay gate to the delta rule \citep{yang2024deltanet}; Gated DeltaNet-2
+\citep{hatamizadeh2026gdn2} decouples erase from write with independent channel-wise sigmoid gates
+and reports recall and perplexity gains at 1.3B --- establishing the machinery but reporting no gate
+behavioral statistics and no causal isolation of the write side. Skip-RNN \citep{campos2018skiprnn}
+learned binary state-update skipping in classical RNNs with a budget penalty --- the closest
+historical relative of our priced gate --- but predates linear-attention states and reports skip
+rates, not token-role alignment. Sparse-write memories \citep{pan2025sse,xiao2026ramnet} route
+writes to state partitions for recall; none prices writing or measures learned-gate semantics.
+
+\textbf{State tracking in linear RNNs.} Extended-eigenvalue and Householder-product designs give
+DeltaNet-class models the expressivity for hard state tracking
+\citep{grazzi2025negative,siems2025deltaproduct}; trained models still fail to length-generalize,
+and recent work explicitly frames the gap as optimization, not expressivity
+\citep{siems2026codestate,buitrago2025length,terzic2025pdssm}. \citet{siems2026codestate} show
+always-write DeltaNet learns $S_5$ perfectly from pure synthetic REPL traces --- fixing the
+undiluted regime as solved and moving the open question to \emph{diluted} streams, which motivated
+our mixture axis. Our companion study \citep{howe2026automaton} gives a causal mechanism at toy
+scale: the additive input path is a parasitic attractor that conceals learned automata, and damping
+it at inference restores them. Whether that reveal effect survives real LM training is exactly this
+paper's P4.
+
+\textbf{Recall evaluation.} We use MQAR-style multi-query associative recall \citep{arora2023zoology}
+rendered in our corpus format, TinyStories \citep{eldan2023tinystories} as the base LM distribution,
+and report all chance levels inline.
+
+\section{Setup}\label{sec:setup}
+\textbf{Model.} A \tgParamsM{}M-parameter DeltaNet-class LM ($d{=}512$, 8 layers, 8 heads, tied
+embeddings, 8k BPE): per head, state $S\in\mathbb{R}^{d_k\times d_v}$ updates by the delta rule with
+$\beta_t\in[0,2]$ (negative-eigenvalue range \citep{grazzi2025negative}) and a scalar per-head write
+gate $\gt$ on the \emph{value write only} (erase and routing untouched):
+$S_t = S_{t-1}\!\left(I-\beta_t k_t k_t^{\top}\right) + \gt\,\beta_t\, v_t k_t^{\top}$.
+Training uses a chunk-parallel WY formulation (pure PyTorch, chunk 128) verified equivalent to a
+sequential reference to $2\times10^{-5}$ before any run. Runs are $\tgSteps$ steps
+$\times$ $\tgTokensPerStep$ tokens $=$ \tgTrainTokensM{}M tokens, AdamW, bf16, one RTX 3080;
+evaluation every $\tgEvalCadence$ steps with per-eval checkpoints retained.
+
+\textbf{Arms.} \textbf{A}: $\gt\equiv1$. \textbf{B}: $\gt=\sigma(w_g^\top x_t)$ plus loss term
+$\lambda\,\overline{|g|}$, $\lambda{=}3\times10^{-3}$ frozen from a pilot sweep. \textbf{B$'$}: same
+learned gate, $\lambda{=}0$ (the Gated DeltaNet-2 species, scalar rather than channel-wise).
+\textbf{C}: $\gt$ set by corpus annotations --- writes suppressed on operation tokens of synthetic
+segments, free elsewhere; the causal upper bound on hygiene. Arms A/B/B$'$ never see annotations.
+
+\textbf{Data.} TinyStories mixed with synthetic tracking text at mixture
+$m\in\{0,2,10,50\%\}$: three families rendered as natural sentences ---
+\emph{boxes} (3-object permutation tracking, $S_3$ tier), \emph{toggle} (one lamp,
+$\mathbb{Z}_2$), \emph{dial} (mod-3 counter, $\mathbb{Z}_3$) --- with per-step state statements
+making tracking directly loss-bearing, training chain depths 1--8, and token-level role spans
+(content/operation/check) recorded in the shards. A generator self-test re-simulates 1{,}000
+documents from raw text before any run.
+
+\textbf{Evals and chance.} Tracking: held-out fixed-depth chains at depths $\{2,4,8,16,32\}$,
+$n{=}50$ per family$\times$depth cell (binomial 95\% half-width $\approx0.14$ at $p{=}0.5$;
+candidate-restricted scoring; chance $=0.5$ toggle, $1/3$ dial and boxes). Recall: MQAR
+\citep{arora2023zoology} with 4/8/12 key--value pairs ($n{=}60$ each; aggregate chance
+$\tgMqarChance$). LM quality: TinyStories validation perplexity. Gate behavior: mean $\gt$ and
+fraction of gates $<0.1$, plus token-role statistics against the held-out oracle masks.
+
+\textbf{Pre-registration.} Predictions P1--P6 and kills K1--K3 were frozen in-repository before any
+grid run (commit \texttt{b868a75}); two amendments (batch-size/heartbeat infrastructure after a
+silent-VRAM-spill false start; additive forecasting instrumentation) were committed before any
+result existed. The frozen seed rule: any cell deciding a \emph{positive} verdict is replicated at a
+second seed before the verdict is claimed; negatives stand on seed 0. The low-mixture (2\%) cells
+were additionally held blind behind a separate forecasting freeze (\S\ref{sec:fusion}) and opened
+only after that gate's verdict was committed. Deviations from the frozen plan are disclosed in
+\S\ref{sec:limits}.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{llrrrrrrr}
+\toprule
+arm & mix\% & ppl & toggle-8 & dial-8 & boxes-16/32 & MQAR & gate mean & gates off \\
+\midrule
+\tgGridTableRows
+\bottomrule
+\end{tabular}
+\caption{Final evaluation, all 13 grid runs (seed 0; chance: toggle $0.5$, dial/boxes $1/3$, MQAR
+$\tgMqarChance$). The grid's three headline facts: only always-write at 50\% mixture masters toggle
+($1.00$ vs.\ $0.50$ everywhere else); dial-8 is at chance in every run
+trained on dial data; and at the 50\% mixture the priced gate (B) is the only \emph{learned} arm
+whose gate sparsifies ($36\%$ shut vs.\ $7\%$ unpriced), at unchanged perplexity.}
+\label{tab:grid}
+\end{table}
+
+\section{Results}
+
+\subsection{P2: the price discovers hygiene}\label{sec:hygiene}
+The pre-registered headline bet: a small $L_1$ price on writing makes the learned gate (i) sparse
+and (ii) \emph{role-aligned} --- quieter on state-operation tokens than on content --- without ever
+seeing role labels. Both halves confirmed (Fig.~\ref{fig:hygiene}a). At the 50\% mixture the priced
+gate ends training at mean $\tgBGateMean$ with $\tgBGateOffPct\%$ of gates below $0.1$; measured
+against the held-out oracle masks, it averages $\tgHygOpBmFifty$ on operation tokens vs.\
+$\tgHygOtherBmFifty$ on content/other tokens (gap $+\tgHygGapBmFifty$; $\tgHygNSeq$ training-format
+sequences, $\tgHygNOpmFifty$ operation tokens). The unpriced control B$'$ --- same architecture,
+same data, $\lambda{=}0$ --- ends at mean $\tgBpGateMean$ with only $\tgBpGateOffPct\%$ shut and
+operation-token gate $\tgHygOpBpmFifty$: gating exists, hygiene is weak. The price is what buys the
+role alignment, at a perplexity cost never exceeding $+\tgPplWorstCostPct\%$ (P6 passes; K3 never
+fires).
+
+Two robustness notes. First, gate behavior replicates: at $m{=}0$ the priced gate's final mean is
+$\tgBGateMeanMZeroSZero$ vs.\ $\tgBGateMeanMZeroSOne$ across two seeds. Second (exploratory, not
+pre-registered): the hygiene gap exists at \emph{every} mixture and grows with operation density ---
+$+\tgHygGapBmTwo$ at 2\%, $+\tgHygGapBmTen$ at 10\%, $+\tgHygGapBmFifty$ at 50\% --- a
+dose--response pattern consistent with the gate learning from the statistics of the operation tokens
+themselves.
+
+To our knowledge these are the first published token-role statistics of a learned write gate in any
+linear-attention model. The measurement is model-agnostic --- it needs only gate activations and a
+role-annotated probe corpus --- and applies directly to production gates (e.g.\ Gated DeltaNet-2's),
+where whether trillion-token training discovers hygiene on its own is an open, now-testable
+question.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig1_hygiene.pdf}
+\caption{\textbf{(a)} Mean learned gate on operation vs.\ content tokens (held-out oracle masks).
+The priced gate (B) suppresses writes on operations at every mixture, hardest where operations are
+densest; the unpriced gate (B$'$) shows the same sign but $\tgHygOpRatioBpOverB\times$ weaker
+suppression. \textbf{(b)} MQAR recall at $m{=}0$ (pure LM data), both seeds: priced hygiene lifts
+recall from a near-chance base at matched perplexity.}
+\label{fig:hygiene}
+\end{figure}
+
+\subsection{P3: hygiene buys recall --- small, replicated in direction, honestly fragile}\label{sec:recall}
+The two-gap link prediction: on pure language data ($m{=}0$), the priced-gate arm beats always-write
+on MQAR by $>+0.03$ at matched perplexity. Measured: $+\tgMqarDeltaSZero$ at seed 0 (pass) and
+$+\tgMqarDeltaSOne$ at seed 1 (below margin), both at slightly \emph{better} perplexity
+($\tgPplCostPctSZero\%$, $\tgPplCostPctSOne\%$), mean $+\tgMqarDeltaMean$
+(Fig.~\ref{fig:hygiene}b). Under the frozen seed rule this is \textbf{supported directionally,
+below margin at one of two seeds} --- a small, real-looking effect requiring more seeds, not a
+confirmed $>3$-point claim.
+
+Three calibrations the grid itself provides. (i)~\emph{Noise floor}: at $m{=}0$ the oracle mask is
+all-ones, so arm C and arm A specify the same computation; their end-of-training difference ---
+$|\Delta\text{MQAR}|=\tgNoiseFloorMqar$, $|\Delta\text{track}|=\tgNoiseFloorTrack$ --- is a direct
+identical-configuration replicate floor (hardware nondeterminism plus one numerically-inert mask
+multiply). The P3 effect is $2$--$3\times$ this floor at both seeds. (ii)~\emph{Chance framing}:
+aggregate MQAR chance is $\tgMqarChance$; arm A sits essentially at it
+($\tgMqarASZero$/$\tgMqarASOne$), so the honest statement is that hygiene lifts recall from
+$\approx$chance to slightly above ($\tgMqarBSZero$/$\tgMqarBSOne$), and unevenly across load at
+seed~0 ($\tgMqarBmZeroPFour$ vs.\ $\tgMqarAmZeroPFour$ at 4 pairs, $\tgMqarBmZeroPEight$ vs.\
+$\tgMqarAmZeroPEight$ at 8, $\tgMqarBmZeroPTwelve$ vs.\ $\tgMqarAmZeroPTwelve$ at 12) --- absolute
+recall at this scale is weak for every arm. (iii)~\emph{Exploratory cross-check}: the \emph{oracle} arm also out-recalls always-write
+where it actually gates ($m{>}0$: $\tgCMqarmFifty$ vs.\ $\tgAMqarmFifty$ at 50\%,
+$\tgCMqarmTen$ vs.\ $\tgAMqarmTen$ at 10\%), same sign as P3, not pre-registered.
+
+\subsection{P1/P5: write discipline does not buy tracking --- sign inverted at scarcity}\label{sec:tracking}
+The tracking-side hypothesis --- write discipline helps tracking emerge, most where tracking data is
+rare --- died by its own pre-registered criteria. P1 predicted oracle-over-always-write deep-boxes
+advantage $>+0.10$ at the 2\% mixture; measured $\tgCminusADeepmTwo$ --- sign inverted. P5 predicted
+$C>A$ at every mixture; measured $\tgCminusADeepmTen$ at 10\%, $\tgCminusADeepmFifty$ at 50\%,
+$\tgCminusADeepmTwo$ at 2\% --- mixed signs within a few noise floors. The fuller truth visible in
+Table~\ref{tab:grid}: \emph{deep boxes never emerged in any arm} --- all thirteen runs sit in a
+chance band around $1/3$ --- so the P1/P5 contrasts are movements inside noise on a task nobody
+learned. Gating didn't rescue deep tracking; nothing did, at this scale and budget.
+
+Two honest instrument notes. First, at-chance cells collapse to \emph{constant answer policies}:
+a model that always answers ``on'' scores exactly the eval pack's gold-label frequency at each
+depth, which is why identical accuracy tuples recur across independent runs in
+Table~\ref{tab:grid} --- repeated values are a fingerprint of at-chance behavior, not copied
+evaluations. Second, dial-8 sits in $[\tgDialEightMin,\tgDialEightMax]$ (chance $\tgDialChance$) in
+\emph{every} run trained on dial data --- the fourth consecutive experimental generation in this
+program (toy grids, 5-seed note grids, and now every LM arm) in which a cyclic mod-3 task drifts
+while same-tier non-cyclic structure locks. We leave the abelian-drift wall as a named open problem;
+our own earlier mechanistic hypothesis for it was killed in \citet{howe2026automaton}.
+
+\subsection{The emergence event that did happen --- and what it is not}\label{sec:emergence}
+Exactly one tracking skill emerged on the grid: the \emph{always-write} arm at the 50\% mixture
+reached perfect toggle accuracy at depths 2/4/8
+($\tgAmFiftyToggleTwo$/$\tgAmFiftyToggleFour$/$\tgAmFiftyToggleEight$), already $\ge0.9$ by the
+first evaluation ($\tgEmergeStepK$k steps) and perfect at every later one except a single transient
+reversion at $\tgToggleDipStepK$k steps, while every gated arm --- priced, unpriced, oracle ---
+stayed at chance ($\tgOthersToggleEight$) all the way to \tgTrainTokensM{}M tokens
+(Fig.~\ref{fig:emergence}). Write gating didn't merely fail to help the easiest family; every form
+of it \emph{prevented} the one emergence the always-write baseline found instantly.
+
+Honesty requires deflating the event itself: the skill is depth-bounded, not an automaton. Accuracy
+falls to $\tgAmFiftyToggleSixteen$/$\tgAmFiftyToggleThirtyTwo$ at depths 16/32 --- inside the
+training envelope it is perfect, one step beyond it is chance. Even the grid's sole winner is
+pattern mastery within the trained depth range, consistent with the unexplored-states account of
+recurrent length generalization \citep{buitrago2025length}, and \emph{not} the length-generalizing
+``automaton underneath'' of the toy regime \citep{howe2026automaton}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig2_emergence.pdf}
+\caption{\textbf{(a)} Toggle accuracy by chain depth at the 50\% mixture: always-write (A) is
+perfect across the training depths (shaded) and at chance beyond; every gated arm is at chance
+everywhere. \textbf{(b)} The A@m50 trajectory: toggle-8 is mastered by the first evaluation, with
+one transient reversion at $\tgToggleDipStepK$k steps; dial-8 never leaves chance beyond one
+$n{=}50$ fluctuation; and the representation probe (right axis; within-minus-between class cosine
+gap at the answer position) stays weak throughout --- maximum $\tgProbeMaxAmFifty$, far below its
+frozen $\tgFusionAnchorTp$ anchor threshold --- even while behavior is perfect.}
+\label{fig:emergence}
+\end{figure}
+
+\subsection{P4: damping destroys --- the reveal effect inverts at LM scale}\label{sec:damping}
+Our companion study established, in cornered toy training, that damping the additive input path at
+inference \emph{reveals} a correctly-learned automaton hiding under a parasitic shortcut
+\citep{howe2026automaton}. P4 pre-registered the same intervention here: damp op-token value-writes
+on trained always-write checkpoints; predict improvement at $m{=}50$ (where tracking data forced a
+skill) and nothing at $m{=}0$.
+
+Measured (Fig.~\ref{fig:damping}): the $m{=}0$ half held exactly ($\tgPfourDeepDeltamZero$
+composite change --- the intervention is a true no-op where no skill exists), and the $m{=}50$ half
+\emph{inverted}: damping op-token writes destroys the toggle mastery ---
+$\tgPfourBaseToggleTwo\to\tgPfourDampToggleTwo$ at depth 2,
+$\tgPfourBaseToggleFour\to\tgPfourDampToggleFour$ at depth 4,
+$\tgPfourBaseToggleEight\to\tgPfourDampToggleEight$ at depth 8; composite
+$\tgPfourDeepDeltamFifty$. There is nothing underneath to reveal: the skill \emph{lives on} the
+write path.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.5\linewidth]{figs/fig3_damping.pdf}
+\caption{P4: inference-time damping of op-token value-writes on the trained A@m50 checkpoint
+deletes its toggle skill at every depth (composite $\tgPfourDeepDeltamFifty$); the same
+intervention on A@m0 changes nothing ($\tgPfourDeepDeltamZero$), confirming the probe is inert
+where no skill exists.}
+\label{fig:damping}
+\end{figure}
+
+Combined with the toy and hybrid results, the program's mechanism now has a complete,
+pre-registered scope map:
+
+\begin{center}\small
+\begin{tabular}{lll}
+\toprule
+training regime & write-path damping does & evidence \\
+\midrule
+minimal-width, pure tasks (cornered) & \textbf{reveals} hidden automaton & \citet{howe2026automaton} \\
+hybrid content+tracking tasks & \textbf{repairs} damaged solutions & \citet{howe2026automaton}, hybrid bridge \\
+LM training (this paper) & \textbf{destroys} the formed skill & P4, \S\ref{sec:damping} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The boundary variable is how cornered training is. When the loss admits only the automaton, writes
+are parasitic and damping strips the parasite. When training is a language-modeling problem,
+\emph{writing is how the skill forms and where it lives}: the same intervention that exposes hidden
+structure in the toy deletes real structure in the LM. Any at-scale proposal built on the toy
+result's ``suppress the writes'' intuition inherits this boundary --- which is exactly why the
+cheap experiment was worth running before anyone runs the expensive one.
+
+\subsection{The pre-registered forecasting gate correctly declined to fire}\label{sec:fusion}
+This grid double-served as the test bed for a frozen emergence-forecasting protocol (dense probe
+plus behavioral anchors every 500 steps, composed-anchor event definition, thresholds
+$(\tgFusionAnchorTp,\tgFusionAnchorTb)$ frozen before any grid value was read, low-mixture cells
+held blind). Its own kill criterion fired: $\tgFusionNEvent/7$ calibration runs reached the frozen
+composite event bar --- mean(toggle-8, dial-8) $\ge0.9$ sustained --- because the bar's dial half
+never emerged anywhere (\S\ref{sec:tracking}), and its toggle half, where it emerged at all, was
+already mastered by the first evaluation ($\tgFusionNearMissToggle$ toggle vs.\
+$\tgFusionNearMissDial$ dial at $m{=}50$). A third, independent blocker: the representation-probe
+anchor itself carried no signal at this scale --- its maximum over the entire A@m50 run was
+$\tgProbeMaxAmFifty$, far below the frozen $\tgFusionAnchorTp$ firing threshold
+(Fig.~\ref{fig:emergence}b) --- so the composed anchor could not have fired even had an approach
+window existed. Nothing was forecastable at this scale and cadence: one target never arrives, the
+other arrives before the first measurement, and the leading indicator that worked in the toy regime
+is mute here. The protocol's verdict
+was committed \emph{before} the blind cells were opened, no threshold was fitted post hoc, and any
+future relaxed-bar analysis of these artifacts is pre-labeled exploratory in the registration.
+We report this as the protocol working as designed --- a frozen gate that declines to fire on
+inadequate data is the failure mode you want.
+
+\section{Discussion}\label{sec:discussion}
+\textbf{For designers of gated linear-attention models.} Three design-relevant facts, each
+pre-registered or disclosed exploratory. (1)~A scalar $L_1$ price turns a write gate into a
+\emph{hygiene} mechanism --- role-aligned write suppression discovered from task statistics alone
+--- at sub-1\% perplexity cost; unpriced gates (the shipped default) leave most of that alignment
+on the table ($\tgHygOpRatioBpOverB\times$ weaker operation-suppression at matched architecture).
+(2)~The payoff of hygiene, where we can measure it, is on the \emph{memory} side (recall), not the
+\emph{computation} side (tracking): priced hygiene lifted near-chance recall in both seeds at
+matched perplexity, while no form of write discipline --- learned, priced, or oracle --- helped any
+tracking family emerge. (3)~Write freedom during skill formation matters: the only arm that
+mastered any tracking was the one allowed to write everywhere, and its skill demonstrably lives on
+those writes. A gate schedule that prices writes for state cleanliness \emph{after} skills form is
+a different (untested) proposal than gating throughout training --- our results caution against the
+latter and say nothing yet about the former.
+
+\textbf{The measurable question this hands the frontier.} Our hygiene statistic --- mean gate on
+operation vs.\ content tokens over a role-annotated probe corpus --- transfers as-is to production
+checkpoints with learned write gates (Gated DeltaNet-2 class). Whether trillion-token training
+discovers hygiene without a price, and whether its gate statistics predict recall quality, are now
+concrete, cheap measurements on public checkpoints rather than speculation. That is the natural
+next experiment, and it requires no training at all.
+
+\textbf{The two-gap hypothesis, split.} This program began from the intuition that recall pollution
+and tracking failure share the undisciplined-write root. The verdict is a clean split: the recall
+half survives (hygiene helps, a little, for free), the tracking half dies at LM scale (writes are
+load-bearing for skill formation), and the toy-regime reveal effect that motivated the tracking
+half is now scope-bounded to cornered training. ``The gate learns hygiene; hygiene buys memory,
+not automata.''
+
+\section{Limitations and disclosures}\label{sec:limits}
+\textbf{Scale and power.} \tgParamsM{}M parameters, TinyStories-class data, $S_3$-tier synthetic
+tracking, $n{=}50$ per tracking cell ($\pm\approx0.14$), MQAR from a near-chance base, single seed
+except the pre-registered $m{=}0$ replication pair. The recall effect specifically needs more
+seeds before any $>$noise-floor-multiple claim hardens. Gate parameterization is per-head scalar;
+Gated DeltaNet-2's is channel-wise --- our economics conclusions are parameterization-scoped.
+
+\textbf{Deviations from the frozen plan, disclosed.} (i)~The pre-registered $n_h{=}2$ extension
+pair was not run: the program's decision questions resolved at $n_h{=}1$ and the budget moved to
+the seed replication. (ii)~The frozen contingency (state-passing fine-tune \citep{buitrago2025length}
+before any write-path attribution, triggered ``if the $m{=}50$ A arm fails deep tracking'') was not
+run: A@m50 mastered the toggle family P4 measures while deep \emph{boxes} emerged in no arm
+(\S\ref{sec:tracking}), and we judged the trigger's intent --- don't attribute a \emph{failure} to
+write behavior without the rescue control --- inapplicable to P4's actual finding, which attributes
+a \emph{success} to the write path. Readers may weigh that judgment; the fine-tune remains the
+right control for any future deep-boxes attribution. (iii)~Training shards were accidentally
+committed early in the program, silently blocking pushes; the unpushed range was rewritten to
+excise the data files (content otherwise unchanged), so the pre-registration commits carry
+third-party timestamps only from the day the block was found, with ordering enforced by the
+intra-repository hash chain. Old$\to$new hashes are mapped in the repository's
+\texttt{VERDICTS.md}. (iv)~The role-annotated shards were deleted from disk in cleanup; the
+hygiene measurement (\S\ref{sec:hygiene}) runs on a deterministic regeneration of each training
+corpus prefix (seeded generators, frozen tokenizer), committed as \texttt{hygiene.json}; it
+reproduces the originally-logged values within sampling noise. (v)~The forecasting protocol's
+richer analyses (interval calibration, anchor-lead distributions) never activated because zero
+events occurred; only the gate verdict is claimed.
+
+\section{Reproducibility}\label{sec:repro}
+All code, pre-registrations, run logs, verdict analysis, and this paper's number/figure
+regeneration pipeline are published in the \texttt{twogap/} directory of
+\url{https://github.com/gunnerhowe/automaton-underneath}, alongside the companion mechanism
+study and its 202-run artifact set. The program's working repository carries the commit chain that
+enforces the pre-registration ordering (private; access on request); key commits (post-excision
+hashes): pre-registration freeze \texttt{b868a75}; forecasting freeze \texttt{e84d431} and
+amendment \texttt{a260732}; forecasting verdict committed before blind-cell opening
+\texttt{f10b406}; grid verdicts \texttt{c4f2692}; P4 \texttt{11701e8}. Every number in this
+manuscript is a macro generated by \texttt{gen\_numbers.py} from committed artifacts
+(\texttt{runs/*/log.json}, \texttt{hygiene.json}, \texttt{p4\_results.json},
+\texttt{fusion\_constants.json}); \texttt{verify\_regen.py} re-derives them and byte-compares
+before any release. Model checkpoints ($\approx$18GB) are retained locally and available on
+request. Training is single-GPU (RTX 3080, $\approx$6h/run); the full grid is $\approx$3.5
+GPU-days.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
