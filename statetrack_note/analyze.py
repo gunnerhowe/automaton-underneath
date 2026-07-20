@@ -14,6 +14,7 @@ RUNS = ROOT / "runs"
 PAPER = ROOT / "paper"
 POS = [32, 64, 128, 256, 512]
 NAIVE_REFL = {"parity": 1, "mod3": 2, "s4": 3, "a5": 4, "s5": 4}   # max generator rank(I-P), defining rep
+TL = {"parity": "parity", "mod3": "mod-3", "s4": "$S_4$", "s5": "$S_5$", "a5": "$A_5$"}  # figure labels = body math
 N_SEEDS = {"m3": 5, "m0": 3, "m2": 3}
 
 
@@ -212,7 +213,7 @@ def figures(cs):
             ax.plot(xs, ys, color=C[b], lw=1.8, label=f"{'+b' if b else '-b'} (n={len(rs)})")
             ax.fill_between(xs, lo, hi, color=C[b], alpha=0.15, lw=0)
         ax.axvline(32, color="gray", lw=0.8, ls=":")
-        ax.set(title=f"{t}  (n_h={nh})", xlabel="position", ylim=(0, 1.05))
+        ax.set(title=f"{TL[t]}  ($n_h={nh}$)", xlabel="position", ylim=(0, 1.05))
         ax.legend(fontsize=8)
     axes[0].set_ylabel("per-position accuracy")
     fig.tight_layout()
@@ -232,8 +233,8 @@ def figures(cs):
             ax.text(nh, yi, f"{m:.2f}", ha="center", va="center", fontsize=7,
                     color="white" if tag(rs) != "mixed" else "black", zorder=3)
         ax.scatter(NAIVE_REFL[t] - 0.33, yi, marker=">", s=70, c="k", zorder=4)
-    ax.set(yticks=range(len(tasks)), yticklabels=tasks, xticks=(1, 2, 3, 4),
-           xlabel="n_h (Householder factors/token)", title="-b cells: median pos-512 acc; ▶ = defining-rep reflection length")
+    ax.set(yticks=range(len(tasks)), yticklabels=[TL[t] for t in tasks], xticks=(1, 2, 3, 4),
+           xlabel="$n_h$ (Householder factors/token)", title="$-b$ cells: median pos-512 acc; ▶ = defining-rep reflection length")
     ax.set_xlim(0.4, 4.6)
     fig.tight_layout()
     fig.savefig(PAPER / "figs" / "fig2_law.pdf")
@@ -246,20 +247,20 @@ def figures(cs):
             continue
         n_ep = min(len(r["usage_per_epoch"]) for r in rs)
         ys = [st.median([r["usage_per_epoch"][e][0] for r in rs]) for e in range(n_ep)]
-        axes[0].plot(range(n_ep), ys, color=col, lw=1.8, label=f"{t} n_h={nh}")
-    axes[0].set(xlabel="epoch", ylabel="probe ||W_b e|| (median)", title="additive-path growth from EXACT init")
+        axes[0].plot(range(n_ep), ys, color=col, lw=1.8, label=f"{TL[t]} $n_h={nh}$")
+    axes[0].set(xlabel="epoch", ylabel=r"probe $\|W_b\,e\|$ (median)", title="additive-path growth from EXACT init")
     axes[0].legend(fontsize=8)
     labels, vals, cols = [], [], []
     for t, nh in (("parity", 1), ("s5", 4)):
         for b, init, nm in ((True, "exact", "+b exact\npost-train"), (False, "exact", "-b exact\npost-train")):
             rs = cs.get((t, "m3", nh, b, init), [])
             if rs:
-                labels.append(f"{t}\n{nm}")
+                labels.append(f"{TL[t]}\n{nm}")
                 vals.append(med(rs, "pos", 512)[0])
                 cols.append("#d62728" if b else "#1f77b4")
         rs = cs.get((t, "m3", nh, True, "exact"), [])
         if rs and med(rs, "pos_bzero", 512):
-            labels.append(f"{t}\n+b, W_b:=0\nat inference")
+            labels.append(f"{TL[t]}\n+b, $W_b$:=0\nat inference")
             vals.append(med(rs, "pos_bzero", 512)[0])
             cols.append("#2ca02c")
     axes[1].bar(range(len(vals)), vals, color=cols)
