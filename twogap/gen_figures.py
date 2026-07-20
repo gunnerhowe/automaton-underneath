@@ -98,7 +98,7 @@ def main():
     l3, = axr.plot([p["step"] / 1000 for p in pr], [p["probe_toggle"] for p in pr], "-", lw=0.9,
                    c="#e67e22", alpha=0.85, label="toggle probe (right axis)")
     axr.axhline(0.45, ls="-.", c="#e67e22", lw=0.7, alpha=0.6)
-    axr.text(24.5, 0.455, "frozen anchor threshold", fontsize=6, color="#e67e22", ha="right")
+    axr.text(24.3, 0.415, "anchor threshold", fontsize=6, color="#e67e22", ha="right", va="top")
     axr.set_ylim(0, 0.5)
     axr.set_ylabel("probe (cosine gap)", color="#e67e22", fontsize=8)
     axr.tick_params(axis="y", labelcolor="#e67e22", labelsize=7)
@@ -123,8 +123,8 @@ def main():
     ax1.set_xticks([0, 1])
     ax1.set_xticklabels(labels)
     ax1.set_ylabel("block-2 / block-1 write ratio")
-    ax1.set_ylim(0, 1.0)
-    ax1.legend(frameon=False, fontsize=7, loc="lower right")
+    ax1.set_ylim(0, 1.08)
+    ax1.legend(frameon=False, fontsize=7, loc="upper left")
     ax1.set_title("(a) production knobs suppress re-writes of known facts", fontsize=9)
     fams = ("boxes", "toggle", "dial")
     for i, (sp, c) in enumerate([("dn", "#c0392b"), ("m2", "#8e44ad")]):
@@ -134,8 +134,8 @@ def main():
     ax2.set_xticks(range(3))
     ax2.set_xticklabels(fams)
     ax2.set_ylabel("op / content write ratio")
-    ax2.set_ylim(0, 1.15)
-    ax2.legend(frameon=False, fontsize=7, loc="lower right")
+    ax2.set_ylim(0, 1.18)
+    ax2.legend(frameon=False, fontsize=7, loc="upper left", bbox_to_anchor=(0.0, 0.80))
     ax2.set_title("(b) op-token suppression on our (OOD) families", fontsize=9)
     fig.savefig(FIGS / "fig4_production.pdf")
     plt.close(fig)
@@ -159,7 +159,7 @@ def main():
     ax.set_title(f"Damping deletes the skill (A@m0 delta: {d0:+.3f})", fontsize=9)
     fig.savefig(FIGS / "fig3_damping.pdf")
     plt.close(fig)
-    print("wrote 3 figures to paper/figs/")
+    print("wrote 4 figures to paper/figs/")
 
 
 if __name__ == "__main__":
