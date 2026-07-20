@@ -68,11 +68,43 @@ def main():
         rows.append(" & ".join(r) + " \\\\")
     table = "\n".join(rows)
 
+    # --- Tier 3 (LM-scale widened implant): read the lmimplant experimental record ---
+    LMW = ROOT.parent / "lmimplant"
+    F = json.loads((LMW / "facts.json").read_text())
+    N["LmwBasePpl"] = round(F["base_ppl"], 2)
+    N["LmwResidMin"] = F["resid_std_min"]
+    N["LmwResidMedian"] = F["resid_std_median"]
+    N["LmwHeadOne"] = F["head_cost_pct"]["1"]
+    N["LmwHeadSix"] = F["head_cost_pct"]["6"]
+    N["LmwWidenInertPct"] = F["widen_inert_pct"]
+    N["LmwWidenImplantPct"] = F["widen_implant_pct"]
+    N["LmwWidenDepth"] = max(int(d) for d in F["widen_toggle"])
+    N["LmwWallLogTen"] = len(str(int(F["asis_readout_wall_ppl"]))) - 1
+    LCELLS = [("none_p0_s0", "NoneZero"), ("none_p10_s0", "NoneTen"), ("none_p50_s0", "NoneFifty"),
+              ("freeze_p0_s0", "FreezeZero"), ("freeze_p10_s0", "FreezeTen"),
+              ("freeze_p50_s0", "FreezeFifty")]
+    lrows = []
+    for fn, t in LCELLS:
+        r = json.loads((LMW / "runs_wide" / f"{fn}.json").read_text())
+        cur = r["curve"]
+        N[f"LmwBeh{t}End"] = cur[-1]["beh_toggle8"]
+        N[f"LmwInt{t}End"] = cur[-1]["internal_toggle"]
+        N[f"LmwResurrect{t}"] = r["resurrection_beh8"]
+        N[f"LmwPplPct{t}"] = round((cur[-1]["ppl"] - F["base_ppl"]) / F["base_ppl"] * 100, 1)
+        arm = "none" if r["arm"] == "none" else "freeze"
+        lrows.append(f"{arm} & {int(r['p']*100)}\\% & {cur[0]['beh_toggle8']:.2f} & "
+                     f"{cur[-1]['beh_toggle8']:.2f} & {cur[-1]['internal_toggle']:.2f} & "
+                     f"{r['resurrection_beh8']:.2f} & {cur[-1]['ppl']:.2f} \\\\")
+    N["LmwSteps"] = json.loads((LMW / "runs_wide" / "none_p0_s0.json").read_text())["curve"][-1]["step"]
+    N["LmwDriftFloorPct"] = N["LmwPplPctNoneZero"]
+    lm_table = "\n".join(lrows)
+
     (ROOT / "numbers.json").write_text(json.dumps(N, indent=1, sort_keys=True))
     with open(PAPER / "numbers.tex", "w") as f:
         for k, v in sorted(N.items()):
             f.write(f"\\newcommand{{\\im{k}}}{{{v}}}\n")
         f.write("\\newcommand{\\imGridTableRows}{%\n" + table + "\n}\n")
+        f.write("\\newcommand{\\imLmwBatteryRows}{%\n" + lm_table + "\n}\n")
     print(f"wrote numbers.json ({len(N)} values) + paper/numbers.tex")
 
 

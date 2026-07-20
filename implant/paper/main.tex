@@ -11,7 +11,8 @@
 \input{numbers.tex}
 \newcommand{\bt}{b_t}
 
-\title{Implant, Conceal, Resist:\\ The Fate of Inserted Skills Under Continued Training\\ in Linear RNNs}
+\title{Implant, Conceal, Resurrect:\\ The Fate of Inserted Skills Under Continued Training,\\
+from Toy Automata to a Language Model}
 \author{Gunner Levi Howe\\\texttt{gunnerlevihowe@gmail.com}}
 \date{July 2026}
 
@@ -36,16 +37,23 @@ parameter trainable; training grew a parasitic bypass \emph{around} an intact ci
 bypass's norm scales with exercise. Third, the resulting fate taxonomy --- \textbf{protected /
 concealed-but-recoverable / eroded} (true erosion only when unprotected \emph{and} unexercised)
 --- implies the edit-durability literature's decay measurements may conflate two mechanistically
-different outcomes, only one of which is loss. At LM scale (a 30M-parameter DeltaNet-class
-language model), the study inverted: the pre-registered skill-\emph{creation} gate failed ---
-fine-tuning a pretrained model on tracking-rich data never produced the skill (chance through
-$\imWarmTotalStepsK$k steps, $\approx\imBudgetRatio\times$ the budget at which the identical
-harness from random initialization emerges, by step $\imColdEmergeStep$) while mixture loss fell
-throughout: \emph{warm-start skill-acquisition resistance}. At scale, insertion --- not retention
---- is the bottleneck, which elevates direct weight-space implantation from toy convenience to the
-load-bearing route for deliberate skill installation. All predictions, kill criteria, and analysis
-rules were pre-registered in-repository before any run; post-hoc analyses are labeled; every
-number regenerates from committed artifacts.
+different outcomes, only one of which is loss. We then take the study to a real 30M-parameter
+DeltaNet-class language model in two steps. First, an inverted control: the pre-registered
+skill-\emph{creation} gate fails --- fine-tuning a pretrained model on tracking-rich data never
+produces the skill (chance through $\imWarmTotalStepsK$k steps, $\approx\imBudgetRatio\times$ the
+budget at which random initialization succeeds) while loss falls throughout, so \emph{insertion},
+not retention, is the LM-scale bottleneck. Second, we therefore \emph{construct} the skill in:
+adding one inert head (widening verified identity to $\imLmwWidenInertPct\%$ perplexity) installs a
+toggle automaton that reads out behaviorally at $1.00$ for $\imLmwWidenImplantPct\%$ perplexity, and
+the toy fate map reproduces --- unexercised continued training suppresses behavioral expression to
+chance ($\imLmwBehNoneZeroEnd$) while the internal circuit stays exact ($\imLmwIntNoneZeroEnd$) and
+readout-recoverable ($\imLmwResurrectNoneZero$); a $10\%$ exercise trickle prevents it; the
+mechanism is \emph{interface drift} (the tied-embedding readout moves, not the computation). This
+connects to the unlearning-robustness finding that suppression need not be removal, with the
+difference that our ground truth is constructed, so we can \emph{prove} the computation survived
+rather than infer it --- under honest caveats (constructed not learned, linear RNN, trivial skill,
+white-box recovery). All predictions and kills were pre-registered before any run; post-hoc
+analyses are labeled; every number regenerates from committed artifacts.
 \end{abstract}
 
 \section{Introduction}
@@ -93,6 +101,12 @@ pre-registered creation gate failed --- a TinyStories-pretrained 30M linear-RNN 
 $50\%$ tracking data never acquires a toggle-tracking skill (chance through $\imWarmTotalStepsK$k
 steps) that the identical harness from random init acquires by step $\imColdEmergeStep$, at lower
 loss throughout: the skill is not on the loss-descent path from the pretrained basin.
+\item \textbf{The fate map reproduces at LM scale, by construction} (\S\ref{sec:tier3}): since
+fine-tuning cannot insert the skill, we \emph{construct} it into one inert added head of the real
+LM (widening verified identity) and continue training under a pre-registered grid. Concealment and
+recovery reproduce --- unexercised training suppresses behavior to chance while the internal circuit
+stays exact and readout-recoverable --- via an \emph{interface-drift} mechanism, connecting to
+unlearning robustness under a constructed-ground-truth caveat.
 \end{enumerate}
 
 \section{Related work}
@@ -103,9 +117,20 @@ operate on key--value associations in transformer MLPs, with no ground-truth cir
 recoverability probe; our results suggest their central quantity --- performance decay --- may
 conflate erasure with bypass (\S\ref{sec:resurrection}). \textbf{Task vectors.}
 \citet{ilharco2023task} add fine-tuning deltas post hoc; continued training after grafting is not
-their setting. \textbf{Ground-truth circuits.} InterpBench \citep{gupta2024interpbench} builds
-semi-synthetic transformers implementing known circuits for evaluating interpretability methods;
-the circuits are trained in, not implanted, and not subjected to continued training.
+their setting. \textbf{Ground-truth circuits.} Tracr \citep{lindner2023tracr} compiles exact algorithms into
+transformer weights and InterpBench \citep{gupta2024interpbench} builds semi-synthetic transformers
+implementing known circuits; both establish exact-construction, and neither subjects the construction
+to continued training --- which is our question. \textbf{Unlearning robustness.} That behavioral
+suppression need not be weight-level removal is established: \citet{deeb2024weights} recover
+``unlearned'' facts by fine-tuning on adjacent facts; \citet{xu2026reversibility} document
+reversibility; \citet{lee2026uds} give a training-free activation-patching depth score (UDS) that
+flags knowledge recoverable from internal representations behind a clean-looking output. Our
+\S\ref{sec:tier3} is adjacent, not competing: we do not propose a detector or claim to beat
+behavioral evaluation. Our difference is that the capability is \emph{constructed} ground truth, so
+we can \emph{prove} the computation is intact (read the implanted head directly) rather than infer
+residual knowledge, and we identify a specific mechanism (interface drift) for a specific
+installation route (weight-space implant under continued pretraining, not a targeted unlearning
+method).
 \textbf{Plasticity.} Warm-starting is known to cost generalization \citep{ash2020warm}, and deep
 continual learning loses plasticity over long horizons \citep{dohare2024plasticity}; our Tier-2
 observation is the qualitative extreme --- zero acquisition of a capability at
@@ -266,6 +291,95 @@ stays at chance through $\imWarmTotalStepsK$k steps at lower loss throughout.}
 \label{fig:lm}
 \end{figure}
 
+\section{Tier 3: constructing the fate map at LM scale}\label{sec:tier3}
+Since fine-tuning cannot insert the skill (Tier 2), we take the route Tier 1 makes available:
+\emph{construct} it directly into the trained LM, then continue training and measure its fate. This
+is pre-registered separately (freeze before the continued-training battery).
+
+\textbf{The construction obstacle.} A trained tied-embedding LM has no spare residual capacity: over
+TinyStories, the least-active residual dimension has standard deviation $\imLmwResidMin$ against a
+median of $\imLmwResidMedian$. Donating one attention head is cheap but head-specific
+(Fig.~\ref{fig:lm3construct}a: block-$0$ head~$1$ costs $\imLmwHeadOne\%$ perplexity, head~$6$ a
+catastrophic $\imLmwHeadSix\%$), and routing the circuit's answer to the logits \emph{in place}
+collides with the block's output RMSNorm and drives perplexity to $\approx10^{\imLmwWallLogTen}$.
+\textbf{The widened substrate.} Adding one inert $64$-dimensional head (zero-padding every weight)
+is verified identity ($\imLmwWidenInertPct\%$ perplexity); implanting the toggle circuit into that
+fresh head is then clean, because the new dimensions are exactly zero for real tokens
+(Fig.~\ref{fig:lm3construct}b): behavioral toggle $1.00$ through depth $\imLmwWidenDepth$ at
+$\imLmwWidenImplantPct\%$ perplexity. An exact skill lives in a real LM and it reads out, free.
+
+\textbf{The battery.} We continue training the implanted widened model for $\imLmwSteps$ steps under
+a pre-registered grid: arm $\in\{$all-trainable, freeze-implant$\}$ $\times$ exercise
+$p\in\{0,10,50\%\}$, logging behavioral toggle (logits), internal toggle (the implanted head read
+directly), and perplexity; after training we re-pin the readout interface and re-measure (the
+resurrection probe). Table~\ref{tab:lm3} and Figs.~\ref{fig:lm3traj}--\ref{fig:lm3tax} give the
+result, and the Tier-1 taxonomy reproduces:
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{llccccc}
+\toprule
+arm & $p$ & beh.\ start & beh.\ end & internal end & resurrection & ppl end \\
+\midrule
+\imLmwBatteryRows
+\bottomrule
+\end{tabular}
+\caption{Tier-3 continued-training battery (widened LM, seed 0, $\imLmwSteps$ steps; toggle chance
+$0.5$). ``Internal'' reads the implanted head's own computation; ``resurrection'' is behavioral
+toggle after re-pinning the readout interface.}
+\label{tab:lm3}
+\end{table}
+
+\begin{itemize}
+\item \textbf{Concealment forms under training and recovers.} All-trainable, $0\%$ exercise:
+behavioral toggle decays to chance ($\imLmwBehNoneZeroEnd$) while the internal circuit ends exact
+($\imLmwIntNoneZeroEnd$) and re-pinning the readout restores it ($\imLmwResurrectNoneZero$). The
+computation survives $\imLmwSteps$ steps of pure-LM training; only its behavioral \emph{expression}
+is lost.
+\item \textbf{The mechanism is interface drift.} The dedicated tokens' embeddings and the readout
+are tied into the shared embedding and take gradients every step, so continued training drifts the
+\emph{interface} while the head's computation persists. A $10\%$ exercise trickle pins the interface
+(behavior stays $1.00$); freezing the circuit's weights but not its interface is
+\emph{counterproductive} (all-trainable co-adapts and re-forms, internal $\imLmwIntNoneZeroEnd$;
+freeze/$0\%$ cannot and genuinely erodes, internal $\imLmwIntFreezeZeroEnd$, unrecoverable
+$\imLmwResurrectFreezeZero$).
+\item \textbf{Skill diffusion.} At $50\%$ exercise behavioral toggle stays $1.00$ while the
+single-head internal read drops ($\imLmwIntNoneFiftyEnd$): heavy practice spreads the skill into
+redundant routes beyond the implanted head.
+\end{itemize}
+
+The concealed/eroded distinction again separates on the internal read (Fig.~\ref{fig:lm3tax}) ---
+which, relative to unlearning-robustness detectors \citep{deeb2024weights,lee2026uds}, we can here
+\emph{ground} against a known-intact construction rather than infer.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig4_lm_construct.pdf}
+\caption{\textbf{(a)} Perplexity cost of donating each block-$0$ head (capped $30\%$; head~$6$ is
+$\imLmwHeadSix\%$). \textbf{(b)} In the widened substrate the implanted circuit reads out at $1.00$
+through depth $\imLmwWidenDepth$, at $\imLmwWidenImplantPct\%$ perplexity.}
+\label{fig:lm3construct}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig5_lm_traj.pdf}
+\caption{\textbf{(a)} Behavioral toggle over continued training (all-trainable arm): unexercised
+erodes to chance; a $10$--$50\%$ trickle holds it. \textbf{(b)} all-trainable/$0\%$: behavioral
+expression collapses while the internal circuit --- perturbed during training, exact at the end ---
+persists; re-pinning the readout restores behavior.}
+\label{fig:lm3traj}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig6_lm_taxonomy.pdf}
+\caption{Tier-3 end-of-training state per cell: concealed-but-recoverable (all-trainable/$0\%$),
+eroded (freeze/$0\%$), and protected (exercised) separate on the internal read, exactly as at toy
+scale (\S\ref{sec:resurrection}).}
+\label{fig:lm3tax}
+\end{figure}
+
 \section{Limitations and disclosures}
 Tier 1 is toy-scale by design --- that is what buys the exact ground truth --- with one implant
 task ($S_5$), one foreign task (parity on a shared head), one optimizer, and $112$ dimensions; the
@@ -279,19 +393,32 @@ model, one skill, one fine-tuning recipe, single-seed, with constant learning ra
 (matched early-phase scale to the from-scratch grid); ``blocked'' is scoped to this budget
 ($\imWarmTotalStepsK$k steps) and recipe --- curricula, higher learning rates, or partial
 re-initialization might break the resistance, and distinguishing those is future work, not a
-counter-claim.
+counter-claim. \textbf{Tier 3} shares Tier 1's toy-skill scope (toggle, one head, one seed) and
+adds its own: the widened substrate \emph{adds} capacity rather than implanting into the model
+as-is (the in-place readout is blocked by the dense-stream RMSNorm, itself reported); the
+continued-training setup drifts perplexity $+\imLmwDriftFloorPct\%$ even at zero exercise (learning
+rate not tuned for minimal-drift continuation), so absolute perplexity is not a clean cost
+measurement, though the toggle-integrity findings are within-run relative. \textbf{On the
+unlearning connection}: Tier 3 is a mechanistic case study on a \emph{constructed} skill under
+generic continued training, not a targeted unlearning method on natural knowledge; that
+suppression can spare the weights is established \citep{deeb2024weights,lee2026uds,xu2026reversibility},
+and we neither claim that as new nor propose a detector --- our added value is the ground-truth
+handle and the interface-drift mechanism, and the recovery here is white-box, not an adversary
+acting on a released checkpoint.
 
 \section{Reproducibility}
-The full record --- pre-registration (frozen before any run), all $48$ cell artifacts, reveal and
-control artifacts, LM logs, verdicts, and this paper's regeneration pipeline --- is published in
-the \texttt{implant/} directory of \url{https://github.com/gunnerhowe/automaton-underneath}
-(companion records: \texttt{statetrack\_note/}, \texttt{twogap/}, \texttt{prodgate/}). Key
-commits in the program's working repository (private; access on request): pre-registration freeze
-\texttt{39b2b88}; Tier-1 verdicts committed before Tier-2 launch \texttt{7d0d8d8}; Tier-2
-verdicts and controls \texttt{0786a3e}. Every number here is a macro generated by
-\texttt{gen\_numbers.py} from committed artifacts and byte-verified by \texttt{verify\_regen.py}.
-Total compute: $\approx5$ GPU-hours (Tier 1 $+$ reveal) and $\approx7$ GPU-hours (Tier 2) on one
-RTX 3080.
+The full record --- pre-registrations (frozen before any run), all Tier-1 cell artifacts, reveal
+and control artifacts, LM logs, the Tier-3 construction scripts and $6$-cell battery, verdicts, and
+this paper's regeneration pipeline --- is published in the \texttt{implant/} and \texttt{lmimplant/}
+directories of \url{https://github.com/gunnerhowe/automaton-underneath} (companion records:
+\texttt{statetrack\_note/}, \texttt{twogap/}, \texttt{prodgate/}). Key commits (private working
+repository; access on request): Tier-1/2 pre-registration freeze \texttt{39b2b88}, Tier-1 verdicts
+\texttt{7d0d8d8}, Tier-2 verdicts \texttt{0786a3e}; Tier-3 construction \texttt{1fd5cf4} and
+battery pre-registration/verdicts. Every number here is a macro generated by
+\texttt{gen\_numbers.py} from committed artifacts (Tier-3 numbers read the \texttt{lmimplant/}
+\texttt{facts.json} and battery cells) and byte-verified by \texttt{verify\_regen.py}. Total
+compute: $\approx5$ GPU-hours (Tier 1 $+$ reveal), $\approx7$ (Tier 2), $\approx2.5$ (Tier 3) on
+one RTX 3080.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
