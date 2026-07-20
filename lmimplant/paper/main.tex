@@ -1,0 +1,274 @@
+\documentclass[10pt]{article}
+\usepackage[margin=1.05in]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[numbers]{natbib}
+\input{numbers.tex}
+
+\title{Implant, Conceal, Resurrect:\\ Installing an Exact Circuit in a Real Language Model\\
+and Its Fate Under Continued Training}
+\author{Gunner Levi Howe\\\texttt{gunnerlevihowe@gmail.com}}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We construct a verified-exact algorithmic circuit --- a one-bit toggle automaton --- inside a single
+head of a \emph{trained} linear-RNN language model, and study what continued training does to it.
+Two construction facts frame the study. (i)~The dense residual stream of a $30$M-parameter
+tied-embedding model has no spare capacity (least-active residual dimension standard deviation
+$\liResidMin$ vs.\ median $\liResidMedian$), so an in-place behavioral readout collides with the
+model's own RMSNorm and destroys language quality (perplexity rises by $\approx$fourteen orders of
+magnitude). (ii)~Adding one inert head (widening $d{=}512{\to}576$, $H{=}8{\to}9$ by zero-padding,
+verified identity to $\liWidenInertPct\%$ perplexity) yields a clean substrate: the implanted circuit
+reads out behaviorally at $1.00$ accuracy through toggle depth $\liWidenDepth$ at $\liWidenImplantPct\%$
+perplexity cost --- an exact skill installed in a real LM, for free. We then continue training under a
+pre-registered grid (arms $\{$all-trainable, freeze-implant$\}$ $\times$ exercise mixture
+$\{0,10,50\%\}$). The central result: under all-trainable pure-LM training with no exercise,
+behavioral toggle decays to chance ($1.00\!\to\!\liBehNoneZeroEnd$) while the internal circuit remains
+exact at the end of training ($\liIntNoneZeroEnd$), and re-pinning only the readout interface restores
+full behavior ($\liResurrectNoneZero$). The mechanism is \emph{interface drift}: continued training
+moves the tied-embedding readout, suppressing behavioral \emph{expression} while the \emph{computation}
+persists and is weight-recoverable. A $10\%$ exercise trickle prevents the drift entirely (behavior
+stays $1.00$); freezing the circuit's weights but not its interface is \emph{counterproductive}
+(internal circuit erodes to $\liIntFreezeZeroEnd$, unrecoverable) because frozen weights cannot
+co-adapt to the drifting input; and heavy ($50\%$) exercise diffuses the skill beyond the implanted
+head. We position this precisely: it is a ground-truth demonstration, at toy scale, of a phenomenon
+the unlearning-robustness literature studies behaviorally --- suppression is not removal --- with the
+honest caveats that the circuit is constructed (not learned), the model is a linear RNN (not a
+transformer), the skill is trivial, and recovery is white-box. All predictions and kills were
+pre-registered before the runs; every number regenerates from committed artifacts.
+\end{abstract}
+
+\section{Introduction}
+Two capabilities the field would like but cannot yet reliably perform: \emph{installing} a specific
+computation into a trained model, and \emph{knowing} whether subsequent training removed a computation
+or merely hid its expression. The second is a live safety question --- unlearning and safety
+fine-tuning are only useful if they \emph{remove} a capability rather than suppressing its surface
+behavior \citep{lynch2024eight} --- but it is hard to answer without a ground-truth circuit: when
+performance drops, probing cannot tell erasure from concealment.
+
+This paper builds the setting where the question is decidable. We take the verified-exact
+state-tracking constructions of our companion work \citep{howe2026automaton} --- solutions written
+into DeltaProduct-style Householder linear RNNs and provably correct at initialization --- and use
+them as \emph{implants}: an exact circuit inserted by hand into a trained language model, whose
+integrity after any amount of further training can be read against a known ceiling; the toy-scale study
+of implant fate is our companion \citep{howe2026implant}, which this paper takes to a real LM. Because the delta
+rule performs one reflection per token per head, the implantable target is the reflection-length-one
+task --- a toggle (lamp on/off) automaton, which is also the trained model's own hardest reliably-%
+learned skill in \citet{howe2026hygiene}. We construct it, verify it reads out exactly, continue
+training under a pre-registered grid, and measure both its behavioral expression (via the model's
+logits) and its internal computation (the implanted head's state, read directly).
+
+\paragraph{What is and is not new.} Compiling exact algorithms into transformer weights is established
+--- Tracr \citep{lindner2023tracr} compiles RASP programs into fresh transformers, and InterpBench
+\citep{gupta2024interpbench} trains ground-truth circuits into semi-synthetic models. Our construction
+is the linear-RNN analog, and is \emph{not} the contribution. The contribution is what happens
+\emph{after} insertion into a \emph{trained} model under \emph{continued training}: the concealment /
+recovery dynamics, their interface-drift mechanism, and the exercise/freeze dependence. Likewise,
+``suppression is not removal'' is a known concern in unlearning \citep{lynch2024eight} and edit
+durability \citep{cheng2025erase}; our contribution there is a ground-truth exact-circuit
+demonstration and mechanism, not the concept.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+\item \textbf{An exact circuit installed in a real LM, measured} (\S\ref{sec:construct}): the dense
+residual stream forbids a cheap in-place behavioral readout (a construction obstacle we quantify);
+one inert added head fixes it, giving exact behavioral readout at $\liWidenImplantPct\%$ perplexity.
+\item \textbf{Concealment and recovery under continued training} (\S\ref{sec:battery}): pre-registered;
+unexercised pure-LM training suppresses behavior to chance while the circuit stays internally exact and
+readout-recoverable.
+\item \textbf{The interface-drift mechanism} (\S\ref{sec:mechanism}): behavior dies because the
+tied-embedding readout drifts, not because the computation is destroyed; exercise pins the interface,
+and freezing the circuit alone is counterproductive.
+\item \textbf{Honest scope and safety framing} (\S\ref{sec:discussion}--\S\ref{sec:limits}): what a
+toy, constructed, white-box result does and does not imply for frontier unlearning.
+\end{enumerate}
+
+\section{Setup}\label{sec:setup}
+\textbf{Model.} The trained substrate is the $30$M-parameter DeltaNet-class LM of
+\citet{howe2026hygiene} (the arm-A checkpoint; $d{=}512$, $8$ layers, $8$ heads, tied embeddings,
+delta rule $S_t{=}(I-\beta_t k_t k_t^\top)S_{t-1}+g_t\beta_t k_t v_t^\top$, $o_t{=}S_t^\top q_t$),
+trained on TinyStories \citep{eldan2023tinystories} to perplexity $\liBasePpl$.
+\textbf{Implant.} Toggle has reflection length one, so it fits a single head: the lamp lives at one
+state entry, a content token sets it, a flip token negates it via the $\beta{=}2$ erase term, a check
+token reads it. Exercise uses four dedicated vocabulary tokens (on/off/flip/check); behavioral toggle
+is scored from the model's next-token logits, internal toggle from the implanted head's output at the
+check position read directly. All predictions/kills were frozen in-repository before any
+continued-training run.
+
+\section{Installing the circuit}\label{sec:construct}
+\textbf{The dense-stream obstacle.} The toy constructions of \citet{howe2026automaton} live in a clean
+dedicated-dimension subspace. A trained tied-embedding LM has none: measured over TinyStories, the
+least-active residual dimension has standard deviation $\liResidMin$ against a median of
+$\liResidMedian$ (max $\liResidMax$) --- every dimension carries language. Consequently, donating a
+head is cheap but head-specific (Fig.~\ref{fig:construct}a: block-$0$ head~$1$ costs $\liHeadOne\%$
+perplexity, head~$0$ $\liHeadZero\%$, head~$6$ a catastrophic $\liHeadSix\%$ --- it does
+induction-like work), yet routing the circuit's answer to the logits \emph{in place} collides with the
+block's output RMSNorm, which amplifies the donated head's near-zero output on quiet real tokens: the
+behavioral readout works ($1.00$ toggle) but drives perplexity to $\approx 10^{\liWallLogTen}$. In a
+dense residual stream, an exact circuit can be installed and computed but cannot be cheaply wired to
+the output.
+
+\textbf{The widened substrate.} Adding one inert $64$-dimensional head ($d{=}512{\to}576$,
+$H{=}8{\to}9$) by zero-padding every weight matrix is verified identity: the widened-but-empty model
+matches the trained model to $\liWidenInertPct\%$ perplexity. Implanting the toggle circuit into that
+fresh head, with the answer on a fresh residual dimension, is then clean --- the new dimensions are
+\emph{exactly} zero for real tokens, so the query is exactly zero on real text and the RMSNorm has
+nothing to amplify. The result (Fig.~\ref{fig:construct}b): behavioral toggle $1.00$ through depth
+$\liWidenDepth$ (well beyond any training length) at $\liWidenImplantPct\%$ perplexity cost. An exact
+algorithmic skill now lives in a real language model and the model emits it, at no language cost.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig1_construction.pdf}
+\caption{\textbf{(a)} Perplexity cost of donating each block-$0$ head (capped at $30\%$; head~$6$ is
+$\liHeadSix\%$): donation is cheap but head-specific. \textbf{(b)} In the widened substrate the
+implanted circuit reads out behaviorally at $1.00$ through depth $\liWidenDepth$, at
+$\liWidenImplantPct\%$ perplexity.}
+\label{fig:construct}
+\end{figure}
+
+\section{Fate under continued training}\label{sec:battery}
+We continue training the implanted widened model for $\liSteps$ steps under a pre-registered
+$2\times3$ grid: arm $\in\{$\textbf{none} (all weights trainable), \textbf{freeze-implant} (the
+head's implant weights frozen)$\}$ $\times$ exercise mixture $p\in\{0,10,50\%\}$ of dedicated-token
+toggle sequences vs.\ pure TinyStories. We log behavioral and internal toggle and perplexity every
+$300$ steps, and after training re-pin the readout interface (the answer-routing weight and the
+on/off embedding rows) and re-measure behavior (the resurrection probe). Table~\ref{tab:battery} and
+Figs.~\ref{fig:traj}--\ref{fig:tax} give the results.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{llccccc}
+\toprule
+arm & $p$ & beh.\ start & beh.\ end & internal end & resurrection & ppl end \\
+\midrule
+\liBatteryRows
+\bottomrule
+\end{tabular}
+\caption{Continued-training battery (widened substrate, seed 0, $\liSteps$ steps; toggle chance
+$\liChanceToggle$; base perplexity $\liBasePpl$). ``Beh.'' = behavioral (logits); ``internal'' = the
+implanted head's own computation; ``resurrection'' = behavioral toggle after re-pinning the readout
+interface.}
+\label{tab:battery}
+\end{table}
+
+\textbf{Pre-registered verdicts.}
+\begin{itemize}
+\item \textbf{IL1 (unexercised erosion): confirmed.} none/$0\%$ behavioral toggle decays
+$1.00\to\liBehNoneZeroEnd$ ($\le0.60$).
+\item \textbf{IL2 (exercise protects): confirmed.} none end-behavior is nondecreasing in exercise
+($\liBehNoneZeroEnd, \liBehNoneTenEnd, \liBehNoneFiftyEnd$); a $10\%$ trickle holds it at $1.00$
+throughout.
+\item \textbf{IL3 (freeze preserves): not confirmed --- and the failure is a finding.} freeze/$0\%$
+dies to $\liBehFreezeZeroEnd$ and does not recover ($\liResurrectFreezeZero$), \emph{worse} than the
+all-trainable none/$0\%$ (\S\ref{sec:mechanism}).
+\item \textbf{IL4 (resurrection): confirmed where applicable.} Every cell whose behavior decayed while
+the internal circuit stayed intact recovers to $1.00$ by re-pinning the readout (none/$0\%$:
+behavioral $\liBehNoneZeroEnd$, internal $\liIntNoneZeroEnd$, resurrection $\liResurrectNoneZero$).
+The one genuinely eroded cell (freeze/$0\%$: internal $\liIntFreezeZeroEnd$) correctly does not recover
+($\liResurrectFreezeZero$): the internal read separates concealed from eroded.
+\item \textbf{Kills.} KL2 (implant unpreservable everywhere) does not fire (none/$10\%$ fully
+preserves). KL3 (exercise collapses perplexity $>{+}10\%$) technically fires at $p{=}50\%$
+($+\liPplPctNoneFifty\%$) but is confounded: the no-exercise none/$0\%$ cell already drifts
+$+\liDriftFloorPct\%$ from continued training alone, so most of the rise is generic optimization drift,
+not exercise (\S\ref{sec:limits}).
+\end{itemize}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig2_trajectories.pdf}
+\caption{\textbf{(a)} Behavioral toggle over continued training (none arm): unexercised ($0\%$)
+erodes to chance; a $10\%$ or $50\%$ exercise trickle holds it at $1.00$. \textbf{(b)} none/$0\%$:
+behavioral expression collapses while the internal circuit --- knocked around during training, but
+exact at the end --- persists; re-pinning the readout restores behavior.}
+\label{fig:traj}
+\end{figure}
+
+\section{The mechanism: interface drift}\label{sec:mechanism}
+Why does an unexercised implant lose its behavior but not its computation? The vulnerable object is
+the \emph{interface}, not the circuit. The dedicated tokens' embeddings and the answer-readout weights
+are tied into the model's shared embedding and receive gradients on every step (the tied embedding is
+also the output head), so continued training drifts them even when the toggle task never appears in
+the data. Behavioral toggle therefore decays (Fig.~\ref{fig:traj}b) while the implanted head's
+\emph{computation}, read directly, survives.
+
+Two arms confirm the mechanism. \textbf{Exercise pins the interface:} at $p\ge10\%$ the dedicated
+tokens appear in training, their embeddings stay put, and behavior never drifts (IL2). \textbf{Freezing
+the circuit is counterproductive:} in none/$0\%$ the trainable circuit \emph{co-adapts} to the drifting
+input and its internal integrity re-forms to exact by the end ($\liIntNoneZeroEnd$); in freeze/$0\%$
+the frozen circuit cannot compensate for the drifting input embeddings, so its internal computation
+breaks ($\liIntFreezeZeroEnd$) and is unrecoverable. Preserving an implant thus requires pinning its
+\emph{input/output interface}, not its weights --- the opposite of the naive intervention.
+
+A third, unpredicted phenomenon: at heavy exercise ($p{=}50\%$) behavioral toggle stays $1.00$ while
+the \emph{single-head} internal read drops ($\liIntNoneFiftyEnd$). Heavy practice diffuses the skill
+beyond the implanted head into redundant routes, so a one-head read no longer reflects behavior. The
+implant seeds a capability the surrounding model then distributes.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig3_taxonomy.pdf}
+\caption{End-of-training state per cell: behavioral toggle, internal-circuit toggle, and behavioral
+toggle after re-pinning the readout. Concealed-but-recoverable (none/$0\%$: behavior at chance,
+circuit exact, recovers), eroded (freeze/$0\%$: all at chance, no recovery), and protected
+(exercised cells) separate cleanly; the internal read is what distinguishes concealment from erasure.}
+\label{fig:tax}
+\end{figure}
+
+\section{Discussion}\label{sec:discussion}
+The clean statement of the result: continued training can drive a deliberately-installed capability's
+behavioral \emph{expression} to chance while its underlying \emph{computation} persists intact and is
+recoverable by re-aligning the readout --- and a ground-truth internal read distinguishes this
+concealment from genuine erasure, which the same battery also produces. This is the mechanistic,
+provable version of the unlearning-robustness observation that suppression need not be removal
+\citep{lynch2024eight}: here we can \emph{prove} the mechanism survived because we built it exactly,
+and we identify \emph{why} (interface drift) and \emph{what prevents preservation} (freezing weights
+without the interface).
+
+We are deliberately careful about reach. The safety-relevant reading --- ``training may hide rather
+than remove capabilities'' --- is supported here only in a specific, constructed, white-box setting,
+and the recovery mechanism is interface-specific. What the result contributes to that conversation is
+a ground-truth existence proof and a named mechanism, not evidence that natural capabilities in
+frontier models behave this way. Section~\ref{sec:limits} states the gaps that would have to close
+before the reading generalizes.
+
+\section{Limitations and honest scope}\label{sec:limits}
+\textbf{Constructed, not learned.} The implant is a hand-built exact circuit; a naturally-trained
+capability may drift differently. This is the single largest gap to any frontier claim.
+\textbf{Linear RNN, not transformer.} The clean single-head delta-rule construction and the widening
+trick are architecture-specific; the transformer analog (Tracr-style) is a different, harder
+construction. \textbf{Trivial skill.} Toggle is one bit ($\mathbb{Z}_2$); it is not a capability
+anyone would care to hide, and higher-reflection-length skills need multi-head constructions (open).
+\textbf{White-box recovery.} ``Resurrection'' re-pins weights we saved; it is not an adversary
+recovering a suppressed capability from a released checkpoint. \textbf{Dedicated-token protocol.} The
+skill is exercised through reserved tokens, not natural language; natural-language triggers are
+untested. \textbf{Single seed; perplexity drift.} One seed; and the continued-training setup drifts
+perplexity $+\liDriftFloorPct\%$ even at zero exercise (learning rate not tuned for minimal-drift
+continuation), which does not affect the within-run toggle-integrity findings (all relative to each
+run's own start) but means the absolute perplexity numbers are not a clean cost measurement.
+\textbf{The freeze arm's confound is reported as a finding}, not corrected. None of these is hidden;
+together they place the work as a toy-scale mechanistic study, and the path to relevance is to close
+at least two of {constructed$\to$learned, RNN$\to$transformer, white-box$\to$realistic-recovery,
+trivial$\to$meaningful}.
+
+\section{Reproducibility}\label{sec:repro}
+All code, the pre-registration (frozen before the battery), the $6$ cell artifacts, the fact-capture
+script (\texttt{capture\_facts.py}, which regenerates every construction/feasibility number into
+\texttt{facts.json}), and this paper's number/figure pipeline are published in the \texttt{lmimplant/}
+directory of \url{https://github.com/gunnerhowe/automaton-underneath}. Every number here is a macro
+generated by \texttt{gen\_numbers.py} from \texttt{facts.json} and \texttt{runs\_wide/*.json};
+\texttt{verify\_regen.py} re-derives them and byte-compares before release. Compute:
+$\approx2.5$ GPU-hours (battery) plus construction probes on one RTX 3080.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
