@@ -45,9 +45,16 @@ that emerged anywhere arose in the \emph{always-write} arm, and damping op-token
 --- inverting the reveal effect our companion mechanism study established in cornered toy training,
 and completing a three-regime scope map: write damping reveals hidden automata in minimal-width pure
 training, repairs them in hybrid tasks, and deletes skills in LM training, where the write path is
-how skills form. All predictions, kills, and analysis rules were pre-registered in-repository before
-any grid run; deviations are disclosed, and every number in this paper regenerates from committed run
-artifacts.
+how skills form. Finally, a zero-training, pre-registered follow-up measurement on a production
+hybrid (Nemotron-Flash-3B, re-implemented torch-native) closes the scale question in both
+directions: the production model's write knobs \emph{already} implement novelty-based hygiene ---
+repeated facts are written more weakly than position-matched novel facts by $\tgProdDnDiff$
+(deltanet $\beta$) and $\tgProdMtDiff$ (mamba2 $\Delta_t$), and our synthetic operation tokens are
+write-suppressed out-of-distribution --- so the price is a small-scale scaffold for what
+production-scale training discovers by default, and the surviving design rule is to \emph{measure}
+hygiene, not necessarily to price it. All predictions, kills, and analysis rules were
+pre-registered in-repository before any run; deviations are disclosed, and every number in this
+paper regenerates from committed run artifacts.
 \end{abstract}
 
 \section{Introduction}
@@ -105,6 +112,13 @@ that emerged --- perfect depth-$\le$8 toggle tracking, always-write arm, 50\% mi
 ($\tgPfourDeepDeltamZero$) where no skill exists. With our companion mechanism study
 \citep{howe2026automaton}, this completes a three-regime scope map for write-path intervention
 (reveal / repair / destroy) whose boundary variable is how cornered training is.
+\item \textbf{The production answer, measured not extrapolated} (\S\ref{sec:production}). A
+separately pre-registered, zero-training measurement on NVIDIA's Nemotron-Flash-3B (weights
+public; forward re-implemented torch-native and behaviorally validated) shows both of its write
+knobs already suppress re-writes of known facts relative to position-matched novel facts
+($\tgProdDnDiff$ / $\tgProdMtDiff$, both $2$--$3\times$ the frozen margin) and suppress our
+operation tokens out-of-distribution --- production-scale training discovers hygiene without a
+price, killing our own naive scaled proposal by its pre-registered go/no-go rule.
 \item \textbf{Method disclosures the field can reuse}: an identical-computation noise floor hiding
 inside any oracle-mask grid (\S\ref{sec:recall}); a constant-policy artifact that makes at-chance
 accuracy tuples repeat across independent runs (\S\ref{sec:tracking}); and a pre-registered,
@@ -381,6 +395,50 @@ future relaxed-bar analysis of these artifacts is pre-labeled exploratory in the
 We report this as the protocol working as designed --- a frozen gate that declines to fire on
 inadequate data is the failure mode you want.
 
+\subsection{The production answer: hygiene emerges without a price at 2.75B}\label{sec:production}
+Our hygiene statistic transfers as-is to any checkpoint exposing per-token write knobs, which
+turned the scale objection to this paper --- ``at production scale the gate learns hygiene anyway''
+--- into a measurement rather than a debate. We pre-registered it separately (knobs named from
+static code inspection before any forward pass; thresholds and a position-controlled probe frozen;
+go/no-go rule fixed) and ran it on \textbf{Nemotron-Flash-3B}, NVIDIA's evolutionary-searched
+production hybrid (6 DeltaNet layers with $\beta_t=\sigma(w_b^\top x_t)$ write strengths, 9 Mamba2
+layers with $\Delta_t$ integration strengths, weights public). Windows has no triton, so the model
+was re-implemented torch-native from its shipped source (sequential fp32 recurrences, all 231
+tensors strict-loaded) and behaviorally validated before any knob was read (TinyStories NLL
+$\tgProdNll$; coherent factual continuations).
+
+The primary probe: sequences of 8 facts followed by the \emph{same} 8 facts restated, against a
+position control of 16 distinct facts. Both knob species write repeated facts substantially more
+weakly than position-matched novel facts --- deltanet $\beta$: $\tgProdDnRep$ vs.\
+$\tgProdDnCtl$, difference $\tgProdDnDiff$ (95\% CI $[\tgProdDnCiLo,\tgProdDnCiHi]$); mamba2
+$\Delta_t$: $\tgProdMtRep$ vs.\ $\tgProdMtCtl$, difference $\tgProdMtDiff$
+(CI $[\tgProdMtCiLo,\tgProdMtCiHi]$) --- both clearing the frozen $-0.05$ margin by $2$--$3\times$
+(Fig.~\ref{fig:production}a). And on our own synthetic families --- text this model never trained
+on --- both knobs suppress operation tokens relative to content in all three families
+(deltanet $\tgProdSThreeDnOp$ vs.\ $\tgProdSThreeDnOther$; mamba2 $\tgProdSThreeMtOp$ vs.\
+$\tgProdSThreeMtOther$; Fig.~\ref{fig:production}b): the signature our priced 30M gate had to be
+paid to learn appears out-of-distribution in a production model, for free. Two scoping facts: the
+knobs are \emph{not} lexical-class trackers (content-vs-function-word gaps $\tgProdSTwoDnGap$ /
+$\tgProdSTwoMtGap$ --- novelty- and role-based, not part-of-speech), and hygiene requires depth
+(each species' first layer shows no repeat-vs-control contrast: $\tgProdDnLZeroRep$ vs.\
+$\tgProdDnLZeroCtl$).
+
+By the pre-registered go/no-go rule this is a NO-GO for the naive scaled proposal: production-scale
+training discovers recall-side write hygiene without a price. The completed arc is two-sided ---
+\textbf{hygiene must be bought at 30M scale and emerges by default at 2.75B} --- and to our
+knowledge this is the first behavioral account of a production model's write gates anywhere.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/fig4_production.pdf}
+\caption{The production measurement (Nemotron-Flash-3B, both write-knob species, pre-registered).
+\textbf{(a)} Block-2/block-1 write ratio for repeated vs.\ position-matched novel facts: both
+knobs suppress re-writes of known facts well beyond the frozen margin. \textbf{(b)} Op/content
+write ratio on our three synthetic families (out-of-distribution for this model): operation tokens
+are write-suppressed everywhere.}
+\label{fig:production}
+\end{figure}
+
 \section{Discussion}\label{sec:discussion}
 \textbf{For designers of gated linear-attention models.} Three design-relevant facts, each
 pre-registered or disclosed exploratory. (1)~A scalar $L_1$ price turns a write gate into a
@@ -396,12 +454,12 @@ those writes. A gate schedule that prices writes for state cleanliness \emph{aft
 a different (untested) proposal than gating throughout training --- our results caution against the
 latter and say nothing yet about the former.
 
-\textbf{The measurable question this hands the frontier.} Our hygiene statistic --- mean gate on
-operation vs.\ content tokens over a role-annotated probe corpus --- transfers as-is to production
-checkpoints with learned write gates (Gated DeltaNet-2 class). Whether trillion-token training
-discovers hygiene without a price, and whether its gate statistics predict recall quality, are now
-concrete, cheap measurements on public checkpoints rather than speculation. That is the natural
-next experiment, and it requires no training at all.
+\textbf{The measurable question, measured.} Our hygiene statistic transfers as-is to production
+checkpoints, and \S\ref{sec:production} ran it: production-scale training discovers recall-side
+hygiene without a price. The design guidance therefore inverts from ``price the gate at scale'' to
+``\emph{measure} the gate at scale'' --- the statistic is a zero-training diagnostic of whether a
+given checkpoint's write machinery has learned novelty discipline, and (open question) whether its
+per-checkpoint value predicts recall quality across models.
 
 \textbf{The two-gap hypothesis, split.} This program began from the intuition that recall pollution
 and tracking failure share the undisciplined-write root. The verdict is a clean split: the recall
@@ -415,7 +473,12 @@ not automata.''
 tracking, $n{=}50$ per tracking cell ($\pm\approx0.14$), MQAR from a near-chance base, single seed
 except the pre-registered $m{=}0$ replication pair. The recall effect specifically needs more
 seeds before any $>$noise-floor-multiple claim hardens. Gate parameterization is per-head scalar;
-Gated DeltaNet-2's is channel-wise --- our economics conclusions are parameterization-scoped.
+Gated DeltaNet-2's is channel-wise --- our economics conclusions are parameterization-scoped. The
+production measurement (\S\ref{sec:production}) is one model at one snapshot, through a
+torch-native re-implementation validated behaviorally rather than kernel-bit-exactly, with a
+narrow first-vs-repeat template and a cc-by-nc research-use license; its synthetic-role slice is
+out-of-distribution by design, where a positive is informative but a null would have been
+ambiguous.
 
 \textbf{Deviations from the frozen plan, disclosed.} (i)~The pre-registered $n_h{=}2$ extension
 pair was not run: the program's decision questions resolved at $n_h{=}1$ and the budget moved to
@@ -439,16 +502,18 @@ events occurred; only the gate verdict is claimed.
 
 \section{Reproducibility}\label{sec:repro}
 All code, pre-registrations, run logs, verdict analysis, and this paper's number/figure
-regeneration pipeline are published in the \texttt{twogap/} directory of
+regeneration pipeline are published in the \texttt{twogap/} and \texttt{prodgate/} directories of
 \url{https://github.com/gunnerhowe/automaton-underneath}, alongside the companion mechanism
 study and its 202-run artifact set. The program's working repository carries the commit chain that
 enforces the pre-registration ordering (private; access on request); key commits (post-excision
 hashes): pre-registration freeze \texttt{b868a75}; forecasting freeze \texttt{e84d431} and
 amendment \texttt{a260732}; forecasting verdict committed before blind-cell opening
-\texttt{f10b406}; grid verdicts \texttt{c4f2692}; P4 \texttt{11701e8}. Every number in this
-manuscript is a macro generated by \texttt{gen\_numbers.py} from committed artifacts
-(\texttt{runs/*/log.json}, \texttt{hygiene.json}, \texttt{p4\_results.json},
-\texttt{fusion\_constants.json}); \texttt{verify\_regen.py} re-derives them and byte-compares
+\texttt{f10b406}; grid verdicts \texttt{c4f2692}; P4 \texttt{11701e8}; production-measurement
+freeze \texttt{a876a58} (before the ported model's first forward pass) and results
+\texttt{1fd5cf4}. Every number in this manuscript is a macro generated by
+\texttt{gen\_numbers.py} from committed artifacts (\texttt{runs/*/log.json},
+\texttt{hygiene.json}, \texttt{p4\_results.json}, \texttt{fusion\_constants.json},
+\texttt{prodgate\_results.json}); \texttt{verify\_regen.py} re-derives them and byte-compares
 before any release. Model checkpoints ($\approx$18GB) are retained locally and available on
 request. Training is single-GPU (RTX 3080, $\approx$6h/run); the full grid is $\approx$3.5
 GPU-days.

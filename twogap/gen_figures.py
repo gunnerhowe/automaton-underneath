@@ -108,6 +108,38 @@ def main():
     fig.savefig(FIGS / "fig2_emergence.pdf")
     plt.close(fig)
 
+    # --- F4: the production answer (prodgate) ---
+    pg = json.loads((ROOT.parent / "prodgate" / "prodgate_results.json").read_text())
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 2.5), constrained_layout=True)
+    labels = ["deltanet $\\beta$", "mamba2 $\\Delta_t$"]
+    for i, sp in enumerate(("dn", "m2")):
+        s1 = pg["S1"][sp]
+        ax1.bar(i - 0.19, s1["r_rep"], 0.38, color="#c0392b",
+                label="repeated facts" if i == 0 else None)
+        ax1.bar(i + 0.19, s1["r_ctl"], 0.38, color="#2980b9",
+                label="novel facts (position control)" if i == 0 else None)
+        ax1.text(i, max(s1["r_rep"], s1["r_ctl"]) + 0.02,
+                 f"{s1['diff']:+.3f}", ha="center", fontsize=8)
+    ax1.set_xticks([0, 1])
+    ax1.set_xticklabels(labels)
+    ax1.set_ylabel("block-2 / block-1 write ratio")
+    ax1.set_ylim(0, 1.0)
+    ax1.legend(frameon=False, fontsize=7, loc="lower right")
+    ax1.set_title("(a) production knobs suppress re-writes of known facts", fontsize=9)
+    fams = ("boxes", "toggle", "dial")
+    for i, (sp, c) in enumerate([("dn", "#c0392b"), ("m2", "#8e44ad")]):
+        r = [pg["S3"][sp][f]["op"] / pg["S3"][sp][f]["other"] for f in fams]
+        ax2.bar([x + (i - 0.5) * 0.38 for x in range(3)], r, 0.38, color=c, label=labels[i])
+    ax2.axhline(1.0, ls="--", c="k", lw=0.8)
+    ax2.set_xticks(range(3))
+    ax2.set_xticklabels(fams)
+    ax2.set_ylabel("op / content write ratio")
+    ax2.set_ylim(0, 1.15)
+    ax2.legend(frameon=False, fontsize=7, loc="lower right")
+    ax2.set_title("(b) op-token suppression on our (OOD) families", fontsize=9)
+    fig.savefig(FIGS / "fig4_production.pdf")
+    plt.close(fig)
+
     # --- F3: damping destroys ---
     fig, ax = plt.subplots(figsize=(3.6, 2.5), constrained_layout=True)
     d3 = [2, 4, 8]

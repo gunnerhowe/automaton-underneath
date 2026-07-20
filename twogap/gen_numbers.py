@@ -135,6 +135,25 @@ def main():
     N["FusionNearMissToggle"] = F["A_m50_s0"]["track_by"]["toggle_8"]
     N["FusionNearMissDial"] = F["A_m50_s0"]["track_by"]["dial_8"]
 
+    # --- production measurement (prodgate/prodgate_results.json; prereg a876a58) ---
+    pg = json.loads((ROOT.parent / "prodgate" / "prodgate_results.json").read_text())
+    N["ProdNll"] = pg["V1"]["mean_nll"]
+    for sp, tag in [("dn", "Dn"), ("m2", "Mt")]:
+        s1 = pg["S1"][sp]
+        N[f"Prod{tag}Rep"] = s1["r_rep"]
+        N[f"Prod{tag}Ctl"] = s1["r_ctl"]
+        N[f"Prod{tag}Diff"] = s1["diff"]
+        N[f"Prod{tag}CiLo"] = s1["ci"][0]
+        N[f"Prod{tag}CiHi"] = s1["ci"][1]
+        N[f"Prod{tag}LZeroRep"] = s1["per_layer_rep"][0]
+        N[f"Prod{tag}LZeroCtl"] = s1["per_layer_ctl"][0]
+        N[f"ProdSTwo{tag}Gap"] = pg["S2"][sp]["gap"]
+        ops = [pg["S3"][sp][f]["op"] for f in ("boxes", "toggle", "dial")]
+        oth = [pg["S3"][sp][f]["other"] for f in ("boxes", "toggle", "dial")]
+        N[f"ProdSThree{tag}Op"] = round(sum(ops) / 3, 3)
+        N[f"ProdSThree{tag}Other"] = round(sum(oth) / 3, 3)
+        N[f"ProdSThree{tag}Ratio"] = round(sum(ops) / sum(oth), 2)
+
     # --- main grid table rows ---
     rows = []
     for r in GRID:
