@@ -51,6 +51,7 @@ def main():
         ax.set_ylim(0, 1.1)
         ax.set_title(title, fontsize=9)
     ax1.axhline(0.2, ls=":", c="k", lw=0.7)
+    ax1.set_ylim(0, 1.28)                                     # headroom so the legend clears the 1.0 (-b) bars
     ax1.legend(frameon=False, fontsize=7, ncol=2, loc="upper left")
     fig.savefig(FIGS / "fig1_fate.pdf")
     plt.close(fig)
@@ -74,9 +75,9 @@ def main():
     ax.set_xticks(range(4))
     ax.set_xticklabels([c[2] for c in conds], fontsize=8)
     ax.set_ylabel("S5 integrity (pos 511)")
-    ax.set_ylim(0, 1.15)
-    ax.legend(frameon=False, fontsize=7, loc="upper right")
-    ax.set_title("the resurrection: concealed vs.\\ eroded", fontsize=9)
+    ax.set_ylim(0, 1.32)                                     # headroom so the legend clears the 1.000 labels
+    ax.legend(frameon=False, fontsize=7, loc="upper center", ncol=2)
+    ax.set_title("the resurrection: concealed vs. eroded", fontsize=9)
     fig.savefig(FIGS / "fig2_resurrection.pdf")
     plt.close(fig)
 
@@ -153,7 +154,7 @@ def tier3_figures():
     ax2.annotate("re-pin readout\n$\\to$ 1.00", xy=(3.0, 1.0), xytext=(1.4, 0.72), fontsize=7,
                  arrowprops=dict(arrowstyle="->", lw=0.8, color="#27ae60"), color="#27ae60")
     ax2.set_xlabel("continued-training step (thousands)"); ax2.set_ylabel("toggle-8")
-    ax2.set_ylim(-0.05, 1.08); ax2.legend(frameon=False, fontsize=7, loc="center left")
+    ax2.set_ylim(-0.05, 1.08); ax2.legend(frameon=False, fontsize=7, loc="lower left")
     ax2.set_title("(b) none/0%: behavior dies, circuit re-forms", fontsize=9)
     fig.savefig(FIGS / "fig5_lm_traj.pdf"); plt.close(fig)
 
