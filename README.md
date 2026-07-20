@@ -31,6 +31,24 @@ only skill that emerged arose in the *always-write* arm, and damping its op-toke
 it — inverting the toy-regime reveal effect and completing a three-regime scope map
 (reveal / repair / destroy). A frozen emergence-forecasting gate correctly declined to fire (0/7).
 
+**Implant persistence (this repo, `implant/`):**
+
+> Does a skill INSERTED into a model survive continued training, and what protects it?
+> Pre-registered two-tier study; record at `implant/`.
+
+**TL;DR.** Tier 1 implants the paper's verified-exact S5 automaton into a vocab-extended model and
+continues training on mixtures with a foreign task. The protection law is an interaction: **no
+additive path x any exercise >= 10% retains the implant perfectly (1.000)**; the field-default
+(+b) dies even at 100% exercise. The b-zero **resurrection**: "dead" exercised implants restore to
+exactly 1.000 when the additive path is zeroed at inference (6/6 cells) — training grew a bypass
+around an intact circuit. Fate taxonomy: **protected / concealed-but-recoverable / eroded** (true
+erosion only when unprotected AND unexercised) — a recoverability probe the factual-edit-durability
+literature lacks. Tier 2 (30M LM): the pre-registered creation gate FIRED — fine-tuning a
+TinyStories-pretrained model on tracking data never produces the skill (flat chance through 15k
+steps, ~30x the budget at which the IDENTICAL harness from random init emerges by step 500):
+**warm-start skill-acquisition resistance** — at LM scale, insertion, not retention, is the
+bottleneck.
+
 ## Layout
 
 ```
