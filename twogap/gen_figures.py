@@ -77,7 +77,9 @@ def main():
     ax1.set_xlabel("toggle chain depth")
     ax1.set_ylabel("accuracy (m50)")
     ax1.set_ylim(0.25, 1.05)
-    ax1.legend(frameon=False, fontsize=7, loc="center right")
+    # legend in the empty band on the left (between A's flat 1.0 top and the chance-band lines),
+    # clear of the descending A line on the right
+    ax1.legend(frameon=False, fontsize=6.5, loc="upper left", bbox_to_anchor=(0.02, 0.84))
     ax1.set_title("(a) toggle accuracy by depth, m50", fontsize=9)
 
     la = logf("A_m50_s0")
@@ -153,8 +155,8 @@ def main():
     ax.set_xticks(list(x))
     ax.set_xticklabels([f"depth {d}" for d in d3])
     ax.set_ylabel("A@m50 toggle accuracy")
-    ax.set_ylim(0, 1.1)
-    ax.legend(frameon=False, fontsize=8)
+    ax.set_ylim(0, 1.2)                                       # headroom so the legend clears the 1.0 bars
+    ax.legend(frameon=False, fontsize=8, loc="upper center", ncol=2)
     d0 = p4["A_m0_s0"]["deep_damped"] - p4["A_m0_s0"]["deep_base"]
     ax.set_title(f"Damping deletes the skill (A@m0 delta: {d0:+.3f})", fontsize=9)
     fig.savefig(FIGS / "fig3_damping.pdf")
